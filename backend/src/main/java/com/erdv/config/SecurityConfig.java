@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/prestataires").permitAll()
                         .requestMatchers("/prestataires/**").hasRole("ADMIN")
+                        .requestMatchers("/creneaux/prestataire/*/disponibles").authenticated()
+                        .requestMatchers("/creneaux/prestataire/*/disponibles/date").authenticated()
                         .requestMatchers("/creneaux/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
