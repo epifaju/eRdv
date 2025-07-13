@@ -2,6 +2,7 @@ package com.erdv.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,12 +19,12 @@ public class RendezVous {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "utilisateur_id", nullable = false)
-    @JsonIgnore
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "rendezVous" })
     private Utilisateur utilisateur;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prestataire_id", nullable = false)
-    @JsonBackReference
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "rendezVous" })
     private Prestataire prestataire;
 
     @NotNull(message = "La date et heure sont obligatoires")

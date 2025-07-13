@@ -1,6 +1,7 @@
 package com.erdv.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.erdv.entity.RendezVous;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.ArrayList;
 
 @Entity
 @Table(name = "utilisateurs")
@@ -43,6 +45,10 @@ public class Utilisateur implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
+
+    @OneToMany(mappedBy = "utilisateur", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<RendezVous> rendezVous;
 
     public enum Role {
         USER, ADMIN
@@ -106,6 +112,14 @@ public class Utilisateur implements UserDetails {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public List<RendezVous> getRendezVous() {
+        return rendezVous;
+    }
+
+    public void setRendezVous(List<RendezVous> rendezVous) {
+        this.rendezVous = rendezVous;
     }
 
     // UserDetails implementation

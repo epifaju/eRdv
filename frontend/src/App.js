@@ -12,6 +12,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Prestataires from "./pages/Prestataires";
+import PrestataireCreneaux from "./pages/PrestataireCreneaux";
 import Reservation from "./pages/Reservation";
 import MesRendezVous from "./pages/MesRendezVous";
 import AdminDashboard from "./pages/AdminDashboard";
@@ -44,6 +45,7 @@ const AppContent = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/prestataires" element={<Prestataires />} />
+            <Route path="/prestataires/:id" element={<PrestataireCreneaux />} />
             <Route
               path="/reservation"
               element={

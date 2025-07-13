@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/prestataires").permitAll()
+                        .requestMatchers("/prestataires/*").permitAll()
                         .requestMatchers("/prestataires/**").hasRole("ADMIN")
                         .requestMatchers("/creneaux/prestataire/*/disponibles").authenticated()
                         .requestMatchers("/creneaux/prestataire/*/disponibles/date").authenticated()

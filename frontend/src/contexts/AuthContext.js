@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   // Configuration axios - toujours sur localhost pour accès navigateur
-  const baseURL = "http://localhost:8084/api";
+  const baseURL = "http://localhost:8080/api";
   axios.defaults.baseURL = baseURL;
 
   // Configuration CORS pour axios
