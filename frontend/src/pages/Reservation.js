@@ -81,7 +81,7 @@ const Reservation = () => {
     setLoading(true);
     try {
       const rendezVous = {
-        prestataire: { id: selectedPrestataire },
+        prestataireId: parseInt(selectedPrestataire),
         dateHeure: selectedCreneau.dateHeure,
         service: service,
       };
@@ -90,6 +90,7 @@ const Reservation = () => {
       toast.success("Rendez-vous créé avec succès !");
       navigate("/mes-rendez-vous");
     } catch (error) {
+      console.error("Erreur axios:", error);
       toast.error("Erreur lors de la création du rendez-vous");
     } finally {
       setLoading(false);

@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .requestMatchers("/creneaux/prestataire/*/disponibles").authenticated()
                         .requestMatchers("/creneaux/prestataire/*/disponibles/date").authenticated()
                         .requestMatchers("/creneaux/**").hasRole("ADMIN")
+                        .requestMatchers("/rendez-vous").authenticated()
+                        .requestMatchers("/rendez-vous/**").authenticated()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
