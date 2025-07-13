@@ -1,9 +1,12 @@
 package com.erdv.controller;
 
+import com.erdv.dto.CreateRendezVousRequest;
 import com.erdv.entity.RendezVous;
 import com.erdv.entity.Utilisateur;
+import com.erdv.entity.Prestataire;
 import com.erdv.service.RendezVousService;
 import com.erdv.service.UtilisateurService;
+import com.erdv.service.PrestataireService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +26,9 @@ public class RendezVousController {
 
     @Autowired
     private UtilisateurService utilisateurService;
+
+    @Autowired
+    private PrestataireService prestataireService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -55,10 +61,21 @@ public class RendezVousController {
     }
 
     @PostMapping
-    public ResponseEntity<RendezVous> creerRendezVous(@Valid @RequestBody RendezVous rendezVous) {
+    public ResponseEntity<RendezVous> creerRendezVous(@Valid @RequestBody CreateRendezVousRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Utilisateur utilisateur = (Utilisateur) authentication.getPrincipal();
+
+        // Récupérer le prestataire par son ID
+        Prestataire prestataire = prestataireService.getPrestataireById(request.getPrestataireId());
+
+        // Créer le rendez-vous
+        RendezVous rendezVous = new RendezVous();
         rendezVous.setUtilisateur(utilisateur);
+        rendezVous.setPrestataire(prestataire);
+        rendezVous.setDateHeure(request.getDateHeure());
+        rendezVous.setService(request.getService());
+        rendezVous.setStatut(request.getStatut());
+
         return ResponseEntity.ok(rendezVousService.creerRendezVous(rendezVous));
     }
 
