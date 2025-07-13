@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   Calendar,
@@ -12,6 +13,7 @@ import {
 import toast from "react-hot-toast";
 
 const MesRendezVous = () => {
+  const navigate = useNavigate();
   const [rendezVous, setRendezVous] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -213,13 +215,13 @@ const MesRendezVous = () => {
             Vous n'avez pas encore de rendez-vous.
           </p>
           <div className="mt-6">
-            <a
-              href="/reservation"
-              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
+            <button
+              onClick={() => navigate("/reservation")}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Prendre un rendez-vous
-            </a>
+            </button>
           </div>
         </div>
       ) : (
