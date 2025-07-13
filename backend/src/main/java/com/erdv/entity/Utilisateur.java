@@ -1,5 +1,6 @@
 package com.erdv.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -36,6 +37,7 @@ public class Utilisateur implements UserDetails {
     @NotBlank(message = "Le mot de passe est obligatoire")
     @Size(min = 6, message = "Le mot de passe doit contenir au moins 6 caractères")
     @Column(nullable = false)
+    @JsonIgnore
     private String motDePasse;
 
     @Enumerated(EnumType.STRING)

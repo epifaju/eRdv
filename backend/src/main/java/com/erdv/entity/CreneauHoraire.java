@@ -1,5 +1,6 @@
 package com.erdv.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 
@@ -15,6 +16,7 @@ public class CreneauHoraire {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prestataire_id", nullable = false)
+    @JsonBackReference
     private Prestataire prestataire;
 
     @NotNull(message = "La date et heure sont obligatoires")
