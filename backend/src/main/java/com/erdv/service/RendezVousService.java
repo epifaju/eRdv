@@ -9,6 +9,7 @@ import com.erdv.entity.Prestation;
 import com.erdv.exception.ApiException;
 import com.erdv.repository.RendezVousRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -42,6 +43,10 @@ public class RendezVousService {
 
     @Autowired
     private RendezVousPolicyService rendezVousPolicyService;
+
+    @Autowired
+    @Lazy
+    private PaymentService paymentService;
 
     @Transactional(readOnly = true)
     public List<RendezVousResponse> getAllRendezVous() {
@@ -125,6 +130,15 @@ public class RendezVousService {
     }
 
     public RendezVousResponse creerRendezVous(Utilisateur utilisateur, CreateRendezVousRequest request) {
+        return creerRendezVousInternal(utilisateur, request, false);
+    }
+
+    public RendezVousResponse creerRendezVousApresPaiement(Utilisateur utilisateur, CreateRendezVousRequest request) {
+        return creerRendezVousInternal(utilisateur, request, true);
+    }
+
+    private RendezVousResponse creerRendezVousInternal(
+            Utilisateur utilisateur, CreateRendezVousRequest request, boolean skipPaymentCheck) {
         Prestation prestation = null;
         String serviceLabel = request.getService();
         int dureeMinutes = 30;
@@ -136,6 +150,10 @@ public class RendezVousService {
             }
             serviceLabel = prestation.getNom();
             dureeMinutes = prestation.getDureeMinutes();
+            if (!skipPaymentCheck && paymentService.isPaymentRequired(prestation)) {
+                throw new ApiException(HttpStatus.BAD_REQUEST,
+                        "Un paiement en ligne est requis pour cette prestation");
+            }
         }
         if (serviceLabel == null || serviceLabel.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Indiquez une prestation ou décrivez le motif du rendez-vous");
@@ -242,6 +260,8 @@ public class RendezVousService {
 
         RendezVous savedRendezVous = rendezVousRepository.save(rendezVous);
 
+        paymentService.refundIfPaid(savedRendezVous);
+
         try {
             if (parPrestataireOuAdmin && statutAvant == RendezVous.Statut.EN_ATTENTE) {
                 emailService.envoyerRefusRendezVous(savedRendezVous);
@@ -326,6 +346,16 @@ public class RendezVousService {
         return response;
     }
 
+    @Transactional(readOnly = true)
+    public RendezVousResponse getRendezVousByIdInternal(Long id) {
+        return map(findByIdOrThrow(id));
+    }
+
+    @Transactional(readOnly = true)
+    public RendezVous getEntityById(Long id) {
+        return findByIdOrThrow(id);
+    }
+
     public void deleteRendezVous(Long id, Utilisateur currentUser) {
         RendezVous rendezVous = findByIdOrThrow(id);
         assertCanAccess(rendezVous, currentUser);
@@ -351,6 +381,7 @@ public class RendezVousService {
     private RendezVousResponse map(RendezVous rdv) {
         RendezVousResponse response = RendezVousResponse.from(rdv);
         rendezVousPolicyService.enrichResponse(response, rdv);
+        response.setPayment(paymentService.getPaymentSummaryForRendezVous(rdv.getId()));
         return response;
     }
 

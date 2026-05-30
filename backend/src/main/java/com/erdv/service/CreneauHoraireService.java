@@ -71,6 +71,44 @@ public class CreneauHoraireService {
     }
 
     /**
+     * Vérifie la disponibilité sans réserver (pré-contrôle avant paiement).
+     */
+    @Transactional(readOnly = true)
+    public void assertCreneauxDisponiblesConsecutifs(Long premierCreneauId, int nbSlots) {
+        if (nbSlots <= 1) {
+            CreneauHoraire creneau = creneauHoraireRepository.findById(premierCreneauId)
+                    .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Créneau non trouvé"));
+            if (!creneau.isDisponible()) {
+                throw new ApiException(HttpStatus.CONFLICT, "Ce créneau n'est plus disponible");
+            }
+            return;
+        }
+
+        CreneauHoraire first = creneauHoraireRepository.findById(premierCreneauId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Créneau non trouvé"));
+        if (!first.isDisponible()) {
+            throw new ApiException(HttpStatus.CONFLICT, "Ce créneau n'est plus disponible");
+        }
+
+        LocalDateTime nextStart = first.getDateHeure().plusMinutes(first.getDureeMinutes());
+        for (int i = 1; i < nbSlots; i++) {
+            final LocalDateTime expectedStart = nextStart;
+            CreneauHoraire next = creneauHoraireRepository
+                    .findByPrestataireIdAndDateHeure(first.getPrestataire().getId(), expectedStart)
+                    .orElseGet(() -> creneauHoraireRepository.findCreneauxDisponiblesBetween(
+                            first.getPrestataire().getId(),
+                            expectedStart,
+                            expectedStart.plusMinutes(1))
+                            .stream().findFirst().orElse(null));
+            if (next == null || !next.isDisponible()) {
+                throw new ApiException(HttpStatus.CONFLICT,
+                        "Durée insuffisante : les créneaux consécutifs ne sont pas tous disponibles");
+            }
+            nextStart = next.getDateHeure().plusMinutes(next.getDureeMinutes());
+        }
+    }
+
+    /**
      * Verrouille le créneau en base et le marque indisponible (anti double-réservation).
      */
     @Transactional

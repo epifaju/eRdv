@@ -82,7 +82,9 @@ public class SecurityConfig {
                             .requestMatchers(antMatcher("/rendez-vous/mon-agenda")).hasRole("PRESTATAIRE")
                             .requestMatchers(antMatcher("/rendez-vous/prestataire/*")).hasAnyRole("ADMIN", "PRESTATAIRE")
                             .requestMatchers(antMatcher("/rendez-vous")).authenticated()
-                            .requestMatchers(antMatcher("/rendez-vous/**")).authenticated();
+                            .requestMatchers(antMatcher("/rendez-vous/**")).authenticated()
+                            .requestMatchers(antMatcher(HttpMethod.POST, "/payments/webhook")).permitAll()
+                            .requestMatchers(antMatcher("/payments/**")).authenticated();
                     if (openApiEnabled) {
                         auth.requestMatchers(
                                 antMatcher("/v3/api-docs/**"),

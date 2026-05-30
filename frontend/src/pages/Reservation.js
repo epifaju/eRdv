@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/client";
 import SlotCalendar from "../components/SlotCalendar";
+import PaymentCheckout from "../components/PaymentCheckout";
 import { addDays, dateKey, formatSlotPlage } from "../utils/slotTime";
 import { User, CheckCircle, Briefcase, Calendar, Building2 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -22,11 +23,29 @@ const Reservation = () => {
   const [service, setService] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [paymentConfig, setPaymentConfig] = useState({ enabled: false });
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const dureeMinutes = selectedPrestation?.dureeMinutes;
+
+  const needsPayment =
+    paymentConfig.enabled &&
+    selectedPrestation?.prix != null &&
+    Number(selectedPrestation.prix) > 0;
+
+  useEffect(() => {
+    const loadPaymentConfig = async () => {
+      try {
+        const { data } = await api.get("/payments/config");
+        setPaymentConfig(data);
+      } catch {
+        setPaymentConfig({ enabled: false });
+      }
+    };
+    loadPaymentConfig();
+  }, []);
 
   const fetchEtablissements = async () => {
     try {
@@ -233,6 +252,11 @@ const Reservation = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    toast.success("Paiement accepté — rendez-vous confirmé.");
+    navigate("/mes-rendez-vous");
   };
 
   const getPrestataireById = (id) =>
@@ -475,9 +499,44 @@ const Reservation = () => {
                 <strong>Horaire :</strong>{" "}
                 {formatSlotPlage(selectedCreneau, dureeMinutes)}
               </p>
+              {selectedPrestation?.prix != null && (
+                <p>
+                  <strong>Montant :</strong> {selectedPrestation.prix} €
+                  {needsPayment ? " (paiement en ligne requis)" : ""}
+                </p>
+              )}
             </div>
           </div>
 
+          {needsPayment ? (
+            <div className="mb-4">
+              <div className="mb-4">
+                <label
+                  htmlFor="service"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Précisions (optionnel)
+                </label>
+                <textarea
+                  id="service"
+                  value={service}
+                  onChange={(e) => setService(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  rows="3"
+                  placeholder="Motif, demande particulière…"
+                />
+              </div>
+              <PaymentCheckout
+                publishableKey={paymentConfig.publishableKey}
+                creneauId={selectedCreneau.id}
+                prestationId={selectedPrestation.id}
+                serviceNotes={service}
+                montant={selectedPrestation.prix}
+                onSuccess={handlePaymentSuccess}
+                onBack={() => setStep(4)}
+              />
+            </div>
+          ) : (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label
@@ -513,6 +572,7 @@ const Reservation = () => {
               </button>
             </div>
           </form>
+          )}
         </div>
       )}
     </div>

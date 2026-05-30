@@ -19,6 +19,7 @@ public class RendezVousResponse {
     private EtablissementSummaryResponse etablissement;
     private CreneauSummaryResponse creneau;
     private PrestationResponse prestation;
+    private PaymentSummaryResponse payment;
     private Boolean annulableParClient;
     private Integer delaiAnnulationHeures;
 
@@ -160,6 +161,14 @@ public class RendezVousResponse {
 
     public void setPrestation(PrestationResponse prestation) {
         this.prestation = prestation;
+    }
+
+    public PaymentSummaryResponse getPayment() {
+        return payment;
+    }
+
+    public void setPayment(PaymentSummaryResponse payment) {
+        this.payment = payment;
     }
 
     public Boolean getAnnulableParClient() {

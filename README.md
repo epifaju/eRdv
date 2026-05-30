@@ -33,7 +33,8 @@ Application multi-secteurs (cabinet, salon, garage…) : réservation en ligne, 
 | **Établissements** | Cabinets / sites, prestataires et RDV rattachés, parcours réservation en 5 étapes |
 | **API** | `GET /etablissements`, `GET /etablissements/{id}/prestataires`, CRUD admin |
 | **RGPD** | `GET /users/me/export`, `DELETE /users/me` (anonymisation + révocation sessions) |
-| **Roadmap** | SMS, paiement en ligne (non implémentés) |
+| **Paiement** | Stripe : intent + confirmation, RDV auto-confirmé, remboursement à l'annulation |
+| **Roadmap** | SMS (non implémenté) |
 
 ---
 
@@ -147,7 +148,29 @@ Variables principales (voir `.env.example`) :
 | `APP_AUTH_RATE_LIMIT_WINDOW` | Fenêtre rate limit en secondes (défaut `60`) |
 | `APP_AUTH_REFRESH_TOKEN_PURGE_ENABLED` | Purge nocturne des refresh tokens (défaut `true`) |
 | `APP_AUTH_REFRESH_TOKEN_PURGE_CRON` | Cron Spring de la purge (défaut `0 0 3 * * *`) |
+| `APP_PAYMENT_ENABLED` | Paiement Stripe (`false` par défaut) |
+| `STRIPE_SECRET_KEY` | Clé secrète Stripe (`sk_test_…`) |
+| `STRIPE_PUBLISHABLE_KEY` | Clé publique (`pk_test_…`) |
+| `STRIPE_WEBHOOK_SECRET` | Secret webhook (`whsec_…`, optionnel en local) |
 | **Logs JSON** | Profil `prod` seul → JSON Logstash ; ajouter `plain-logs` pour texte (Docker local) |
+
+### Paiement en ligne (Stripe)
+
+1. Créer un compte [Stripe](https://stripe.com) et récupérer les clés **test**.
+2. Dans `.env` : `APP_PAYMENT_ENABLED=true`, renseigner `STRIPE_SECRET_KEY` et `STRIPE_PUBLISHABLE_KEY`.
+3. Redémarrer : `docker compose up -d --build`.
+4. Réserver une prestation **avec prix** → formulaire Stripe à l’étape confirmation.
+5. Carte test : `4242 4242 4242 4242`, date future, CVC quelconque.
+
+Webhook (prod ou tests avancés) :
+
+```powershell
+stripe listen --forward-to localhost:8084/api/payments/webhook
+```
+
+Copier le `whsec_…` affiché dans `STRIPE_WEBHOOK_SECRET`.
+
+Sans paiement activé, les prestations avec prix restent réservables sans encaissement (comportement actuel).
 
 ### Scripts utiles
 

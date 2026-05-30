@@ -917,6 +917,16 @@ const MesRendezVous = () => {
 
 
 
+                  {rdv.payment && (
+                    <p className="text-sm text-gray-600 mb-4">
+                      Paiement : {rdv.payment.montant} {rdv.payment.devise}
+                      {rdv.payment.statut === "REFUNDED" && " (remboursé)"}
+                      {rdv.payment.statut === "SUCCEEDED" && " (payé)"}
+                    </p>
+                  )}
+
+
+
                   <div className="flex flex-wrap items-center gap-3 justify-between">
 
                     {getStatusBadge(rdv.statut)}
