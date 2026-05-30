@@ -40,9 +40,12 @@ public class RendezVousService {
     @Autowired
     private PrestataireAccessService prestataireAccessService;
 
+    @Autowired
+    private RendezVousPolicyService rendezVousPolicyService;
+
     @Transactional(readOnly = true)
     public List<RendezVousResponse> getAllRendezVous() {
-        return RendezVousResponse.fromList(rendezVousRepository.findAllWithDetails());
+        return mapList(rendezVousRepository.findAllWithDetails());
     }
 
     @Transactional(readOnly = true)
@@ -52,20 +55,20 @@ public class RendezVousService {
             return Page.empty(pageable);
         }
         List<Long> ids = page.getContent().stream().map(RendezVous::getId).toList();
-        List<RendezVousResponse> content = RendezVousResponse.fromList(
+        List<RendezVousResponse> content = mapList(
                 rendezVousRepository.findAllWithDetailsByIds(ids));
         return new PageImpl<>(content, pageable, page.getTotalElements());
     }
 
     @Transactional(readOnly = true)
     public List<RendezVousResponse> getRendezVousByUtilisateur(Long utilisateurId) {
-        return RendezVousResponse.fromList(rendezVousRepository.findByUtilisateurIdWithDetails(utilisateurId));
+        return mapList(rendezVousRepository.findByUtilisateurIdWithDetails(utilisateurId));
     }
 
     @Transactional(readOnly = true)
     public List<RendezVousResponse> getRendezVousByPrestataire(Long prestataireId) {
         prestataireAccessService.assertCanManagePrestataire(prestataireId);
-        return RendezVousResponse.fromList(rendezVousRepository.findByPrestataireIdWithDetails(prestataireId));
+        return mapList(rendezVousRepository.findByPrestataireIdWithDetails(prestataireId));
     }
 
     @Transactional(readOnly = true)
@@ -79,7 +82,7 @@ public class RendezVousService {
 
     @Transactional(readOnly = true)
     public List<RendezVousResponse> getRendezVousByStatut(RendezVous.Statut statut) {
-        return RendezVousResponse.fromList(rendezVousRepository.findByStatutWithDetails(statut));
+        return mapList(rendezVousRepository.findByStatutWithDetails(statut));
     }
 
     private RendezVous findByIdOrThrow(Long id) {
@@ -118,7 +121,7 @@ public class RendezVousService {
     public RendezVousResponse getRendezVousById(Long id, Utilisateur currentUser) {
         RendezVous rdv = findByIdOrThrow(id);
         assertCanAccess(rdv, currentUser);
-        return RendezVousResponse.from(rdv);
+        return map(rdv);
     }
 
     public RendezVousResponse creerRendezVous(Utilisateur utilisateur, CreateRendezVousRequest request) {
@@ -173,7 +176,7 @@ public class RendezVousService {
             throw new ApiException(HttpStatus.CONFLICT, "Ce créneau vient d'être réservé par quelqu'un d'autre");
         }
 
-        RendezVousResponse response = RendezVousResponse.from(
+        RendezVousResponse response = map(
                 rendezVousRepository.findByIdWithDetails(savedRendezVous.getId()).orElse(savedRendezVous));
 
         try {
@@ -198,7 +201,7 @@ public class RendezVousService {
         rendezVous.setService(rendezVousDetails.getService());
         rendezVous.setStatut(rendezVousDetails.getStatut());
 
-        return RendezVousResponse.from(rendezVousRepository.save(rendezVous));
+        return map(rendezVousRepository.save(rendezVous));
     }
 
     public RendezVousResponse confirmerRendezVous(Long id, Utilisateur currentUser) {
@@ -217,7 +220,7 @@ public class RendezVousService {
             System.err.println("Erreur lors de l'envoi de l'email: " + e.getMessage());
         }
 
-        return RendezVousResponse.from(savedRendezVous);
+        return map(savedRendezVous);
     }
 
     public RendezVousResponse annulerRendezVous(Long id, Utilisateur currentUser) {
@@ -225,6 +228,9 @@ public class RendezVousService {
         assertCanAccess(rendezVous, currentUser);
         if (rendezVous.getStatut() == RendezVous.Statut.ANNULE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Ce rendez-vous est déjà annulé");
+        }
+        if (!isPrestataireOuAdmin(currentUser)) {
+            rendezVousPolicyService.assertClientPeutAnnuler(rendezVous);
         }
         RendezVous.Statut statutAvant = rendezVous.getStatut();
         boolean parPrestataireOuAdmin = isPrestataireOuAdmin(currentUser);
@@ -247,7 +253,7 @@ public class RendezVousService {
             System.err.println("Erreur lors de l'envoi de l'email: " + e.getMessage());
         }
 
-        return RendezVousResponse.from(savedRendezVous);
+        return map(savedRendezVous);
     }
 
     public RendezVousResponse reprogrammerRendezVous(Long id, Long nouveauCreneauId, Utilisateur currentUser) {
@@ -307,7 +313,7 @@ public class RendezVousService {
             throw new ApiException(HttpStatus.CONFLICT, "Ce créneau vient d'être réservé par quelqu'un d'autre");
         }
 
-        RendezVousResponse response = RendezVousResponse.from(
+        RendezVousResponse response = map(
                 rendezVousRepository.findByIdWithDetails(savedRendezVous.getId()).orElse(savedRendezVous));
 
         try {
@@ -339,5 +345,15 @@ public class RendezVousService {
     private static boolean isPrestataireOuAdmin(Utilisateur user) {
         return user.getRole() == Utilisateur.Role.ADMIN
                 || user.getRole() == Utilisateur.Role.PRESTATAIRE;
+    }
+
+    private RendezVousResponse map(RendezVous rdv) {
+        RendezVousResponse response = RendezVousResponse.from(rdv);
+        rendezVousPolicyService.enrichResponse(response, rdv);
+        return response;
+    }
+
+    private List<RendezVousResponse> mapList(List<RendezVous> list) {
+        return list.stream().map(this::map).toList();
     }
 }

@@ -77,7 +77,7 @@ class RendezVousServiceTest {
 
         creneau = new CreneauHoraire();
         creneau.setPrestataire(p);
-        creneau.setDateHeure(java.time.LocalDateTime.now().plusDays(1).withHour(10).withMinute(0).withSecond(0).withNano(0));
+        creneau.setDateHeure(java.time.LocalDateTime.now().plusDays(2).withHour(10).withMinute(0).withSecond(0).withNano(0));
         creneau.setDureeMinutes(30);
         creneau.setDisponible(true);
         creneau = creneauHoraireRepository.save(creneau);
@@ -180,6 +180,34 @@ class RendezVousServiceTest {
         assertEquals(2, response.getNbCreneaux().intValue());
         assertEquals(false, creneauHoraireRepository.findById(creneau.getId()).orElseThrow().isDisponible());
         assertEquals(false, creneauHoraireRepository.findById(slot2.getId()).orElseThrow().isDisponible());
+    }
+
+    @Test
+    void annulationClientAutoriseePlusDe24h() {
+        CreateRendezVousRequest req = new CreateRendezVousRequest();
+        req.setCreneauId(creneau.getId());
+        req.setService("Consultation");
+        var rdv = rendezVousService.creerRendezVous(client, req);
+
+        var cancelled = rendezVousService.annulerRendezVous(rdv.getId(), client);
+
+        assertEquals("ANNULE", cancelled.getStatut());
+        assertEquals(true, creneauHoraireRepository.findById(creneau.getId()).orElseThrow().isDisponible());
+    }
+
+    @Test
+    void annulationClientRefuseeMoinsDe24h() {
+        creneau.setDateHeure(java.time.LocalDateTime.now().plusHours(12).withSecond(0).withNano(0));
+        creneau = creneauHoraireRepository.save(creneau);
+
+        CreateRendezVousRequest req = new CreateRendezVousRequest();
+        req.setCreneauId(creneau.getId());
+        req.setService("Consultation");
+        var rdv = rendezVousService.creerRendezVous(client, req);
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> rendezVousService.annulerRendezVous(rdv.getId(), client));
+        assertEquals(HttpStatus.CONFLICT, ex.getStatus());
     }
 
     private Utilisateur buildUser(String email, String nom) {

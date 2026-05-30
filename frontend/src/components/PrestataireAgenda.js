@@ -54,8 +54,8 @@ const PrestataireAgenda = () => {
       await api.put(`/rendez-vous/${id}/annuler`);
       toast.success("Rendez-vous annulé");
       fetchAgenda();
-    } catch {
-      toast.error("Erreur lors de l'annulation");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de l'annulation");
     } finally {
       setActionId(null);
     }

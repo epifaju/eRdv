@@ -258,10 +258,9 @@ const MesRendezVous = () => {
 
       closeCancelModal();
 
-    } catch {
-
-      toast.error("Erreur lors de l'annulation");
-
+    } catch (error) {
+      const msg = error.response?.data?.message;
+      toast.error(msg || "Erreur lors de l'annulation");
     } finally {
 
       setCancelling(false);
@@ -321,10 +320,12 @@ const MesRendezVous = () => {
 
 
   const canModify = (rdv) =>
-
     (rdv.statut === "EN_ATTENTE" || rdv.statut === "CONFIRME") &&
-
     isFutureRdv(rdv.dateHeure);
+
+  const canAnnuler = (rdv) => rdv.annulableParClient === true;
+
+  const delaiAnnulationHeures = (rdv) => rdv.delaiAnnulationHeures ?? 24;
 
 
 
@@ -491,9 +492,11 @@ const MesRendezVous = () => {
             <div className="mt-2 px-7 py-3">
 
               <p className="text-sm text-gray-500 mb-4">
-
                 Êtes-vous sûr de vouloir annuler ce rendez-vous ?
-
+              </p>
+              <p className="text-xs text-gray-500 mb-4">
+                Rappel : annulation possible jusqu&apos;à{" "}
+                {delaiAnnulationHeures(rendezVousToCancel)} h avant le rendez-vous.
               </p>
 
               <div className="bg-gray-50 rounded-lg p-4 text-left">
@@ -984,26 +987,23 @@ const MesRendezVous = () => {
 
                         </button>
 
-                        {rdv.statut === "EN_ATTENTE" && (
-
+                        {canAnnuler(rdv) && (
                           <button
-
                             onClick={() => openCancelModal(rdv)}
-
                             className="inline-flex items-center px-3 py-1.5 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50"
-
                           >
-
                             <X className="h-4 w-4 mr-1" />
-
                             Annuler
-
                           </button>
-
                         )}
-
                       </div>
+                    )}
 
+                    {canModify(rdv) && !canAnnuler(rdv) && (
+                      <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 w-full sm:w-auto">
+                        Annulation impossible : délai de {delaiAnnulationHeures(rdv)} h dépassé.
+                        Contactez le prestataire.
+                      </p>
                     )}
 
                   </div>

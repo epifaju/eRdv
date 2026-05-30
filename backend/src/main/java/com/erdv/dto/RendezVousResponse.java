@@ -18,6 +18,8 @@ public class RendezVousResponse {
     private PrestataireSummaryResponse prestataire;
     private CreneauSummaryResponse creneau;
     private PrestationResponse prestation;
+    private Boolean annulableParClient;
+    private Integer delaiAnnulationHeures;
 
     public static RendezVousResponse from(RendezVous rdv) {
         if (rdv == null) {
@@ -148,5 +150,21 @@ public class RendezVousResponse {
 
     public void setPrestation(PrestationResponse prestation) {
         this.prestation = prestation;
+    }
+
+    public Boolean getAnnulableParClient() {
+        return annulableParClient;
+    }
+
+    public void setAnnulableParClient(Boolean annulableParClient) {
+        this.annulableParClient = annulableParClient;
+    }
+
+    public Integer getDelaiAnnulationHeures() {
+        return delaiAnnulationHeures;
+    }
+
+    public void setDelaiAnnulationHeures(Integer delaiAnnulationHeures) {
+        this.delaiAnnulationHeures = delaiAnnulationHeures;
     }
 }
