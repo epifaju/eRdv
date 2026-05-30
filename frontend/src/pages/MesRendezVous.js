@@ -6,9 +6,9 @@ import api from "../api/client";
 
 import { RDV_MES, rdvReprogrammer } from "../api/paths";
 
-import DatePicker from "react-datepicker";
+import SlotCalendar from "../components/SlotCalendar";
 
-import "react-datepicker/dist/react-datepicker.css";
+import { addDays, dateKey } from "../utils/slotTime";
 
 import {
 
@@ -61,6 +61,8 @@ const MesRendezVous = () => {
   const [selectedCreneau, setSelectedCreneau] = useState(null);
 
   const [loadingCreneaux, setLoadingCreneaux] = useState(false);
+
+  const [weekSlots, setWeekSlots] = useState({});
 
   const [rescheduling, setRescheduling] = useState(false);
 
@@ -122,11 +124,16 @@ const MesRendezVous = () => {
 
 
 
-  const fetchCreneauxForDate = useCallback(async (prestataireId, date, dureeMinutes) => {
+  const dureeReprogrammation = (rdv) =>
+    rdv?.prestation?.dureeMinutes || rdv?.dureeTotaleMinutes || 30;
 
-    if (!prestataireId || !date) return;
 
-    setLoadingCreneaux(true);
+
+  const fetchCreneauxForDate = useCallback(async (prestataireId, date, dureeMinutes, updateList = true) => {
+
+    if (!prestataireId || !date) return [];
+
+    if (updateList) setLoadingCreneaux(true);
 
     try {
 
@@ -150,21 +157,56 @@ const MesRendezVous = () => {
 
       );
 
-      setCreneaux(data);
+      if (updateList) setCreneaux(data);
+
+      return data;
 
     } catch {
 
-      setCreneaux([]);
+      if (updateList) {
 
-      toast.error("Erreur lors du chargement des horaires");
+        setCreneaux([]);
+
+        toast.error("Erreur lors du chargement des horaires");
+
+      }
+
+      return [];
 
     } finally {
 
-      setLoadingCreneaux(false);
+      if (updateList) setLoadingCreneaux(false);
 
     }
 
   }, []);
+
+
+
+  const loadWeekSlots = useCallback(
+    async (weekStartDate) => {
+      if (!rdvToReschedule?.prestataire?.id) return;
+      const prestataireId = rdvToReschedule.prestataire.id;
+      const duree = dureeReprogrammation(rdvToReschedule);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const map = {};
+      const tasks = [];
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(weekStartDate, i);
+        if (day < today) continue;
+        const key = dateKey(day);
+        tasks.push(
+          fetchCreneauxForDate(prestataireId, day, duree, false).then((data) => {
+            map[key] = data;
+          })
+        );
+      }
+      await Promise.all(tasks);
+      setWeekSlots(map);
+    },
+    [rdvToReschedule, fetchCreneauxForDate]
+  );
 
 
 
@@ -214,6 +256,8 @@ const MesRendezVous = () => {
 
     setCreneaux([]);
 
+    setWeekSlots({});
+
     setShowRescheduleModal(true);
 
     fetchCreneauxDisponibles(rdv.prestataire?.id);
@@ -233,6 +277,8 @@ const MesRendezVous = () => {
     setSelectedCreneau(null);
 
     setCreneaux([]);
+
+    setWeekSlots({});
 
     setCreneauxDisponibles([]);
 
@@ -441,28 +487,6 @@ const MesRendezVous = () => {
 
 
 
-  const isDateSelectable = (date) => {
-
-    if (!creneauxDisponibles.length) return false;
-
-    const day = new Date(date);
-
-    day.setHours(0, 0, 0, 0);
-
-    return creneauxDisponibles.some((c) => {
-
-      const slot = new Date(c.dateHeure);
-
-      slot.setHours(0, 0, 0, 0);
-
-      return slot.getTime() === day.getTime();
-
-    });
-
-  };
-
-
-
   const CancelConfirmationModal = () => {
 
     if (!showCancelModal || !rendezVousToCancel) return null;
@@ -525,7 +549,7 @@ const MesRendezVous = () => {
 
                   <Clock className="h-4 w-4 mr-2" />
 
-                  {formatTime(rendezVousToCancel.dateHeure)}
+                  {formatPlage(rendezVousToCancel)}
 
                 </div>
 
@@ -601,7 +625,7 @@ const MesRendezVous = () => {
 
       <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
 
-        <div className="relative top-10 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white mb-10">
+        <div className="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white mb-10">
 
           <div className="flex items-center justify-between mb-4">
 
@@ -643,9 +667,9 @@ const MesRendezVous = () => {
 
             <p className="text-gray-500">
 
-              Actuellement : {formatDate(rdvToReschedule.dateHeure)} à{" "}
+              Actuellement : {formatDate(rdvToReschedule.dateHeure)} ·{" "}
 
-              {formatTime(rdvToReschedule.dateHeure)}
+              {formatPlage(rdvToReschedule)}
 
             </p>
 
@@ -653,121 +677,51 @@ const MesRendezVous = () => {
 
 
 
-          <div className="mb-4">
+          <SlotCalendar
 
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            creneauxDisponibles={creneauxDisponibles}
 
-              Nouvelle date
+            slots={creneaux}
 
-            </label>
+            selectedDate={selectedDate}
 
-            <div className="flex justify-center">
+            onSelectDate={(date) => {
 
-              <DatePicker
+              setSelectedDate(date);
 
-                selected={selectedDate}
+              setSelectedCreneau(null);
 
-                onChange={(date) => {
+            }}
 
-                  setSelectedDate(date);
+            selectedSlot={selectedCreneau}
 
-                  setSelectedCreneau(null);
+            onSelectSlot={setSelectedCreneau}
 
-                }}
+            dureeMinutes={dureeReprogrammation(rdvToReschedule)}
 
-                minDate={new Date()}
+            loading={loadingCreneaux}
 
-                filterDate={isDateSelectable}
+            weekSlots={weekSlots}
 
-                dateFormat="dd/MM/yyyy"
+            onWeekChange={loadWeekSlots}
 
-                placeholderText="Sélectionnez une date"
-
-                className="border rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary-500"
-
-              />
-
-            </div>
-
-            {creneauxDisponibles.length === 0 && (
-
-              <p className="text-amber-700 text-sm mt-2">
-
-                Aucun créneau disponible pour ce prestataire.
-
-              </p>
-
-            )}
-
-          </div>
+          />
 
 
 
-          {selectedDate && (
+          {creneauxDisponibles.length === 0 && (
 
-            <div className="mb-6">
+            <p className="text-amber-700 text-sm mt-2">
 
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              Aucun créneau disponible pour ce prestataire.
 
-                Nouvel horaire
-
-              </label>
-
-              {loadingCreneaux ? (
-
-                <p className="text-gray-500 text-center py-3">Chargement…</p>
-
-              ) : creneaux.length === 0 ? (
-
-                <p className="text-gray-500 text-sm">
-
-                  Aucun créneau pour cette date.
-
-                </p>
-
-              ) : (
-
-                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-
-                  {creneaux.map((creneau) => (
-
-                    <button
-
-                      key={creneau.id}
-
-                      type="button"
-
-                      onClick={() => setSelectedCreneau(creneau)}
-
-                      className={`border rounded-lg p-2 text-sm transition-colors ${
-
-                        selectedCreneau?.id === creneau.id
-
-                          ? "border-primary-600 bg-primary-50 text-primary-700"
-
-                          : "hover:border-primary-500 hover:bg-primary-50"
-
-                      }`}
-
-                    >
-
-                      {formatTime(creneau.dateHeure)}
-
-                    </button>
-
-                  ))}
-
-                </div>
-
-              )}
-
-            </div>
+            </p>
 
           )}
 
 
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 mt-6">
 
             <button
 

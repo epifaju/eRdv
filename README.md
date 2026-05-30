@@ -1,166 +1,179 @@
-# 📅 Application de Prise de Rendez-vous
+# eRDV — Application de prise de rendez-vous
 
-Une application complète de prise de rendez-vous avec Spring Boot (backend) et React.js (frontend).
+Application multi-secteurs (cabinet, salon, garage…) : réservation en ligne, espace prestataire, administration, notifications e-mail.
 
-## 🚀 Fonctionnalités
+**Stack :** Spring Boot 3 · React 18 · PostgreSQL · Docker · Flyway
 
-- **Authentification JWT** : Inscription et connexion sécurisées
-- **Gestion des prestataires** : Création et gestion des prestataires de services
-- **Réservation de rendez-vous** : Interface intuitive pour réserver des créneaux
-- **Espace utilisateur** : Consultation et gestion des rendez-vous personnels
-- **Dashboard administrateur** : Gestion complète des prestataires et rendez-vous
-- **Notifications par email** : Confirmation automatique des réservations
-- **Interface responsive** : Compatible mobile, tablette et desktop
+---
 
-## 🏗️ Architecture
+## Fonctionnalités (V2)
 
-### Backend (Spring Boot)
+| Domaine | Contenu |
+|--------|---------|
+| **Utilisateur** | Inscription, profil, mot de passe oublié, réservation par prestation, calendrier semaine/mois, reprogrammation, annulation (délai 24 h) |
+| **Prestataire** | Espace `/prestataire` : agenda, confirmer/refuser les demandes, gestion du catalogue (prestations & plages récurrentes) |
+| **Admin** | Dashboard : prestataires, créneaux, RDV paginés, catalogue |
+| **Métier** | Catalogue prestations, plages récurrentes, génération créneaux, multi-slots (prestations longues), anti double-booking |
+| **Notifications** | E-mails HTML (client + prestataire), rappels J-1 / H-2 |
+| **Infra** | Flyway, profils dev/prod, scripts Docker & backup PostgreSQL |
 
-- **Framework** : Spring Boot 3.x
-- **Base de données** : PostgreSQL
-- **Authentification** : JWT
-- **Email** : SMTP avec JavaMailSender
-- **API** : RESTful
+---
 
-### Frontend (React.js)
-
-- **Framework** : React.js 18
-- **Styling** : Tailwind CSS
-- **Routing** : React Router
-- **HTTP Client** : Axios
-- **État** : React Hooks
-
-## 🐳 Démarrage rapide avec Docker
+## Démarrage rapide (Docker)
 
 ### Prérequis
 
-- Docker
-- Docker Compose
+- Docker & Docker Compose
+- PowerShell (Windows) ou bash équivalent
 
-### Lancement
+### 1. Configuration
 
-```bash
-# Cloner le projet
-git clone <repository-url>
-cd eRDV
-
-# Lancer l'application
-docker-compose up -d
-
-# L'application sera disponible sur :
-# Frontend : http://localhost:3000
-# Backend API : http://localhost:8080
-# PostgreSQL : localhost:5432
+```powershell
+Copy-Item .env.example .env
+# Éditer .env : JWT_SECRET (généré automatiquement par le script), SMTP optionnel
 ```
 
-## 🛠️ Développement local
+### 2. Lancement
+
+```powershell
+.\scripts\start-docker.ps1
+```
+
+Ou manuellement :
+
+```powershell
+docker compose up -d --build
+```
+
+### 3. URLs
+
+| Service | URL / port |
+|---------|------------|
+| **Frontend** | http://localhost:3001 |
+| **API backend** | http://localhost:8084/api |
+| **Santé API** | http://localhost:8084/api/actuator/health |
+| **PostgreSQL** | `localhost:5436` (utilisateur `postgres`, base `erdv_db`) |
+
+Le frontend Docker est compilé avec `REACT_APP_API_URL=http://localhost:8084/api`. Après modification de l’URL API, reconstruire l’image frontend.
+
+---
+
+## Comptes de démo
+
+Créés au démarrage si `APP_SEED_DEMO_USERS=true` (défaut en Docker local).
+
+| Rôle | E-mail | Mot de passe | Accès |
+|------|--------|--------------|--------|
+| **Admin** | `admin@erdv.com` | `admin123` | Dashboard admin, tous les RDV |
+| **Utilisateur** | `user@erdv.com` | `user123` | Réservation, mes RDV |
+| **Prestataire** | `martin@erdv.com` | `prestataire123` | Espace prestataire (Dr. Martin) |
+| **Prestataire** | `dubois@erdv.com` | `prestataire123` | Espace prestataire |
+| **Prestataire** | `laurent@erdv.com` | `prestataire123` | Espace prestataire |
+
+---
+
+## Rôles
+
+- **USER** — Réserver, voir/annuler/reprogrammer ses RDV (annulation client ≥ 24 h avant, configurable).
+- **PRESTATAIRE** — Compte lié à une fiche prestataire : agenda, confirmation/refus, catalogue.
+- **ADMIN** — Gestion globale (prestataires, créneaux, tous les RDV).
+
+---
+
+## Développement local
 
 ### Backend
 
-```bash
+```powershell
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
+# Profil dev par défaut — port 8080, context-path /api → http://localhost:8080/api
 ```
 
 ### Frontend
 
-```bash
+```powershell
 cd frontend
 npm install
+# Créer frontend/.env.local si besoin :
+# REACT_APP_API_URL=http://localhost:8084/api
 npm start
+# Port 3001 (voir package.json)
 ```
 
-## 📊 Base de données
+### Tests backend
 
-L'application utilise PostgreSQL avec les tables suivantes :
-
-- `utilisateurs` : Gestion des utilisateurs et rôles
-- `prestataires` : Informations des prestataires de services
-- `creneaux_horaires` : Créneaux disponibles par prestataire
-- `rendez_vous` : Réservations des utilisateurs
-
-## 🔐 Authentification
-
-- **JWT** pour l'authentification
-- **Rôles** : USER et ADMIN
-- **Protection des routes** côté client et serveur
-
-## 📧 Configuration Email
-
-L'application envoie automatiquement des emails de confirmation lors des réservations. Configurez les paramètres SMTP dans `application.properties`.
-
-## 🧪 Tests
-
-```bash
-# Tests backend
+```powershell
 cd backend
-./mvnw test
-
-# Tests frontend
-cd frontend
-npm test
+mvn test
 ```
 
-## 📱 Interface utilisateur
+---
 
-- **Design moderne** avec Tailwind CSS
-- **Responsive** : Mobile-first approach
-- **Composants réutilisables** : Modales, formulaires, tableaux
-- **Navigation intuitive** : React Router
+## Configuration (.env)
 
-## 🔧 Configuration
+Variables principales (voir `.env.example`) :
 
-### Variables d'environnement
+| Variable | Description |
+|----------|-------------|
+| `JWT_SECRET` | Clé HS256 (≥ 32 caractères) — obligatoire |
+| `POSTGRES_PASSWORD` | Mot de passe PostgreSQL |
+| `POSTGRES_HOST_PORT` | Port hôte PostgreSQL (défaut `5436`) |
+| `APP_SEED_DEMO_USERS` | `true` en local, `false` en prod réelle |
+| `APP_FRONTEND_BASE_URL` | Liens dans les e-mails (défaut `http://localhost:3001`) |
+| `SPRING_MAIL_*` | SMTP pour envoi réel des e-mails |
+| `APP_REMINDERS_ENABLED` | Rappels automatiques J-1 / H-2 |
+| `APP_RDV_DELAI_ANNULATION_HEURES` | Délai min. avant annulation client (défaut `24`) |
 
-- `DB_URL` : URL de la base de données PostgreSQL
-- `JWT_SECRET` : Clé secrète pour les tokens JWT
-- `SMTP_HOST` : Serveur SMTP
-- `SMTP_PORT` : Port SMTP
-- `SMTP_USERNAME` : Nom d'utilisateur SMTP
-- `SMTP_PASSWORD` : Mot de passe SMTP
+### Scripts utiles
 
-## 📝 API Endpoints
+```powershell
+.\scripts\generate-docker-env.ps1   # JWT_SECRET dans .env
+.\scripts\backup-postgres.ps1       # Sauvegarde PostgreSQL
+.\scripts\reset-docker-volumes.ps1  # Reset volumes (données effacées)
+```
 
-### Authentification
+---
 
-- `POST /api/auth/register` - Inscription
-- `POST /api/auth/login` - Connexion
-- `POST /api/auth/refresh` - Rafraîchissement du token
+## Architecture
 
-### Utilisateurs
+```
+frontend/          React + Tailwind, api/client.js, SlotCalendar
+backend/           Spring Boot, Flyway (db/migration), JWT
+docker-compose.yml postgres + backend + frontend
+scripts/           Docker, backup, env
+```
 
-- `GET /api/users/profile` - Profil utilisateur
-- `PUT /api/users/profile` - Mise à jour du profil
+### Migrations Flyway
 
-### Prestataires
+Schéma versionné (`V1` … `V9`) : auth, reset mot de passe, prestations, plages récurrentes, lien prestataire/utilisateur, créneaux multiples, rappels e-mail.
 
-- `GET /api/prestataires` - Liste des prestataires
-- `POST /api/prestataires` - Créer un prestataire (ADMIN)
-- `PUT /api/prestataires/{id}` - Modifier un prestataire (ADMIN)
-- `DELETE /api/prestataires/{id}` - Supprimer un prestataire (ADMIN)
+---
 
-### Créneaux
+## API (aperçu)
 
-- `GET /api/creneaux` - Créneaux disponibles
-- `POST /api/creneaux` - Créer un créneau (ADMIN)
-- `PUT /api/creneaux/{id}` - Modifier un créneau (ADMIN)
-- `DELETE /api/creneaux/{id}` - Supprimer un créneau (ADMIN)
+Préfixe : `/api`
 
-### Rendez-vous
+| Zone | Exemples |
+|------|----------|
+| Auth | `POST /auth/login`, `/auth/register`, `/auth/refresh`, `/auth/forgot-password` |
+| Profil | `GET/PUT /users/me`, `PUT /users/me/password` |
+| Prestataires | `GET /prestataires` |
+| Prestations / plages | `GET /prestations/prestataire/{id}`, plages récurrentes |
+| Créneaux | `GET /creneaux/prestataire/{id}/disponibles`, `.../disponibles/date?date=&dureeMinutes=` |
+| RDV | `POST /rendez-vous`, `GET /rendez-vous/mes-rendez-vous`, `PUT .../confirmer`, `.../annuler`, `.../reprogrammer` |
+| Prestataire | `GET /rendez-vous/mon-agenda` |
 
-- `GET /api/rendez-vous` - Liste des rendez-vous
-- `POST /api/rendez-vous` - Créer un rendez-vous
-- `PUT /api/rendez-vous/{id}` - Modifier un rendez-vous
-- `DELETE /api/rendez-vous/{id}` - Annuler un rendez-vous
+---
 
-## 🤝 Contribution
+## E-mails
 
-1. Fork le projet
-2. Créer une branche feature (`git checkout -b feature/AmazingFeature`)
-3. Commit les changements (`git commit -m 'Add some AmazingFeature'`)
-4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
+Sans SMTP configuré, les envois échouent silencieusement (logs backend). Pour un envoi réel, renseigner `SPRING_MAIL_USERNAME` et `SPRING_MAIL_PASSWORD` dans `.env`, puis redémarrer le backend.
 
-## 📄 Licence
+Types d’e-mails : accusé de réception, confirmation/refus, annulation, notification prestataire, rappels J-1 / H-2, reset mot de passe — templates HTML avec lien vers l’application.
 
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
+---
+
+## Licence
+
+MIT — voir `LICENSE` si présent.

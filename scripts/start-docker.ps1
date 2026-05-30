@@ -61,6 +61,9 @@ Application démarrée.
 Comptes de démo (si APP_SEED_DEMO_USERS=true) :
   admin@erdv.com / admin123
   user@erdv.com  / user123
+  martin@erdv.com / prestataire123  (prestataire)
+  dubois@erdv.com / prestataire123
+  laurent@erdv.com / prestataire123
 
 Commandes utiles :
   docker compose logs -f backend

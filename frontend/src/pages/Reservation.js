@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "../api/client";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { Calendar, Clock, User, CheckCircle, Briefcase } from "lucide-react";
+import SlotCalendar from "../components/SlotCalendar";
+import { addDays, dateKey, formatSlotPlage } from "../utils/slotTime";
+import { User, CheckCircle, Briefcase, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 
 const Reservation = () => {
@@ -13,6 +13,7 @@ const Reservation = () => {
   const [selectedPrestation, setSelectedPrestation] = useState(null);
   const [creneaux, setCreneaux] = useState([]);
   const [creneauxDisponibles, setCreneauxDisponibles] = useState([]);
+  const [weekSlots, setWeekSlots] = useState({});
   const [loadingCreneaux, setLoadingCreneaux] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedCreneau, setSelectedCreneau] = useState(null);
@@ -23,11 +24,13 @@ const Reservation = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  const dureeMinutes = selectedPrestation?.dureeMinutes;
+
   const fetchPrestataires = async () => {
     try {
       const response = await api.get("/prestataires");
       setPrestataires(response.data);
-    } catch (error) {
+    } catch {
       toast.error("Erreur lors du chargement des prestataires");
     }
   };
@@ -50,36 +53,69 @@ const Reservation = () => {
         `/creneaux/prestataire/${prestataireId}/disponibles`
       );
       setCreneauxDisponibles(response.data);
-    } catch (error) {
+    } catch {
       setCreneauxDisponibles([]);
       toast.error("Erreur lors du chargement des créneaux");
     }
   }, []);
 
-  const fetchCreneaux = useCallback(async () => {
-    if (!selectedPrestataire || !selectedDate) return;
-    setLoadingCreneaux(true);
-    try {
-      const y = selectedDate.getFullYear();
-      const m = String(selectedDate.getMonth() + 1).padStart(2, "0");
-      const d = String(selectedDate.getDate()).padStart(2, "0");
-      const date = `${y}-${m}-${d}`;
-      const params = { date };
-      if (selectedPrestation?.dureeMinutes) {
-        params.dureeMinutes = selectedPrestation.dureeMinutes;
-      }
+  const fetchCreneauxForDate = useCallback(
+    async (date) => {
+      if (!selectedPrestataire || !date) return [];
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      const params = { date: `${y}-${m}-${d}` };
+      if (dureeMinutes) params.dureeMinutes = dureeMinutes;
       const response = await api.get(
         `/creneaux/prestataire/${selectedPrestataire}/disponibles/date`,
         { params }
       );
-      setCreneaux(response.data);
-    } catch (error) {
+      return response.data;
+    },
+    [selectedPrestataire, dureeMinutes]
+  );
+
+  const fetchCreneaux = useCallback(async () => {
+    if (!selectedPrestataire || !selectedDate) return;
+    setLoadingCreneaux(true);
+    try {
+      const data = await fetchCreneauxForDate(selectedDate);
+      setCreneaux(data);
+    } catch {
       setCreneaux([]);
       toast.error("Erreur lors du chargement des créneaux");
     } finally {
       setLoadingCreneaux(false);
     }
-  }, [selectedPrestataire, selectedDate]);
+  }, [selectedPrestataire, selectedDate, fetchCreneauxForDate]);
+
+  const loadWeekSlots = useCallback(
+    async (weekStartDate) => {
+      if (!selectedPrestataire) return;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const map = {};
+      const tasks = [];
+      for (let i = 0; i < 7; i++) {
+        const day = addDays(weekStartDate, i);
+        if (day < today) continue;
+        const key = dateKey(day);
+        tasks.push(
+          fetchCreneauxForDate(day)
+            .then((data) => {
+              map[key] = data;
+            })
+            .catch(() => {
+              map[key] = [];
+            })
+        );
+      }
+      await Promise.all(tasks);
+      setWeekSlots(map);
+    },
+    [selectedPrestataire, fetchCreneauxForDate]
+  );
 
   useEffect(() => {
     fetchPrestataires();
@@ -105,6 +141,7 @@ const Reservation = () => {
     setSelectedCreneau(null);
     setCreneaux([]);
     setCreneauxDisponibles([]);
+    setWeekSlots({});
     setService("");
     fetchPrestations(prestataireId);
     fetchCreneauxDisponibles(prestataireId);
@@ -116,31 +153,18 @@ const Reservation = () => {
     setService("");
     setSelectedDate(null);
     setSelectedCreneau(null);
+    setWeekSlots({});
     setStep(3);
   };
 
-  const datesWithSlots = creneauxDisponibles.reduce((acc, creneau) => {
-    const key = creneau.dateHeure.slice(0, 10);
-    acc.add(key);
-    return acc;
-  }, new Set());
-
-  const isDateSelectable = (date) => {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return datesWithSlots.has(`${y}-${m}-${d}`);
-  };
-
-  const handleDateSelect = (date) => {
+  const handleCalendarDate = (date) => {
     setSelectedDate(date);
     setSelectedCreneau(null);
-    setStep(4);
   };
 
-  const handleCreneauSelect = (creneau) => {
+  const handleSlotSelect = (creneau) => {
     setSelectedCreneau(creneau);
-    setStep(5);
+    if (creneau) setStep(4);
   };
 
   const handleSubmit = async (e) => {
@@ -165,16 +189,15 @@ const Reservation = () => {
       );
       navigate("/mes-rendez-vous");
     } catch (error) {
-      console.error("Erreur API:", error);
-      toast.error("Erreur lors de la création du rendez-vous");
+      const msg = error.response?.data?.message;
+      toast.error(msg || "Erreur lors de la création du rendez-vous");
     } finally {
       setLoading(false);
     }
   };
 
-  const getPrestataireById = (id) => {
-    return prestataires.find((p) => p.id === parseInt(id));
-  };
+  const getPrestataireById = (id) =>
+    prestataires.find((p) => p.id === parseInt(id, 10));
 
   const formatDate = (value) => {
     const date = value instanceof Date ? value : new Date(value);
@@ -186,12 +209,7 @@ const Reservation = () => {
     });
   };
 
-  const formatTime = (dateString) => {
-    return new Date(dateString).toLocaleTimeString("fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const stepLabels = ["Prestataire", "Prestation", "Date & horaire", "Confirmation"];
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -204,10 +222,9 @@ const Reservation = () => {
         </p>
       </div>
 
-      {/* Progress Steps */}
       <div className="mb-8">
         <div className="flex items-center justify-center">
-          {[1, 2, 3, 4, 5].map((stepNumber) => (
+          {[1, 2, 3, 4].map((stepNumber) => (
             <div key={stepNumber} className="flex items-center">
               <div
                 className={`flex items-center justify-center w-8 h-8 rounded-full text-sm ${
@@ -218,26 +235,25 @@ const Reservation = () => {
               >
                 {stepNumber}
               </div>
-              {stepNumber < 5 && (
+              {stepNumber < 4 && (
                 <div
-                  className={`w-10 h-1 mx-1 ${
+                  className={`w-12 h-1 mx-1 ${
                     step > stepNumber ? "bg-primary-600" : "bg-gray-200"
                   }`}
-                ></div>
+                />
               )}
             </div>
           ))}
         </div>
-        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 mt-2 text-xs sm:text-sm text-gray-600">
-          <span className={step >= 1 ? "text-primary-600" : ""}>Prestataire</span>
-          <span className={step >= 2 ? "text-primary-600" : ""}>Prestation</span>
-          <span className={step >= 3 ? "text-primary-600" : ""}>Date</span>
-          <span className={step >= 4 ? "text-primary-600" : ""}>Heure</span>
-          <span className={step >= 5 ? "text-primary-600" : ""}>Confirmation</span>
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 text-xs sm:text-sm text-gray-600">
+          {stepLabels.map((label, i) => (
+            <span key={label} className={step >= i + 1 ? "text-primary-600" : ""}>
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* Step 1: Prestataire */}
       {step === 1 && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -259,7 +275,6 @@ const Reservation = () => {
         </div>
       )}
 
-      {/* Step 2: Prestation */}
       {step === 2 && selectedPrestataire && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center">
@@ -304,35 +319,33 @@ const Reservation = () => {
         </div>
       )}
 
-      {/* Step 3: Date */}
       {step === 3 && selectedPrestation && (
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <h2 className="text-xl font-semibold mb-2 flex items-center">
             <Calendar className="h-5 w-5 mr-2" />
-            Choisissez une date
+            Choisissez une date et un horaire
           </h2>
-          <div className="mb-4">
-            <p className="text-gray-600 mb-2">
-              Prestation : <strong>{selectedPrestation.nom}</strong> (
-              {selectedPrestation.dureeMinutes} min)
+          <p className="text-gray-600 mb-4 text-sm">
+            Prestation : <strong>{selectedPrestation.nom}</strong> (
+            {selectedPrestation.dureeMinutes} min)
+          </p>
+          {creneauxDisponibles.length === 0 ? (
+            <p className="text-center text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-3">
+              Aucun créneau disponible pour ce prestataire.
             </p>
-          </div>
-          <div className="flex justify-center">
-            <DatePicker
-              selected={selectedDate}
-              onChange={handleDateSelect}
-              minDate={new Date()}
-              filterDate={isDateSelectable}
-              dateFormat="dd/MM/yyyy"
-              placeholderText="Sélectionnez une date"
-              className="border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500"
+          ) : (
+            <SlotCalendar
+              creneauxDisponibles={creneauxDisponibles}
+              slots={creneaux}
+              selectedDate={selectedDate}
+              onSelectDate={handleCalendarDate}
+              selectedSlot={selectedCreneau}
+              onSelectSlot={handleSlotSelect}
+              dureeMinutes={dureeMinutes}
+              loading={loadingCreneaux}
+              weekSlots={weekSlots}
+              onWeekChange={loadWeekSlots}
             />
-          </div>
-          {creneauxDisponibles.length === 0 && (
-            <p className="text-center text-amber-700 bg-amber-50 border border-amber-200 rounded-lg py-3 mt-4">
-              Aucun créneau disponible pour ce prestataire. L’administrateur peut en
-              ajouter depuis le dashboard.
-            </p>
           )}
           <button
             onClick={() => setStep(2)}
@@ -343,56 +356,7 @@ const Reservation = () => {
         </div>
       )}
 
-      {/* Step 4: Heure */}
-      {step === 4 && selectedDate && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold mb-4 flex items-center">
-            <Clock className="h-5 w-5 mr-2" />
-            Choisissez une heure
-          </h2>
-          <div className="mb-4">
-            <p className="text-gray-600">
-              Date sélectionnée : <strong>{formatDate(selectedDate)}</strong>
-            </p>
-          </div>
-          {loadingCreneaux ? (
-            <p className="text-gray-500 text-center py-4">Chargement des horaires…</p>
-          ) : creneaux.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">
-              Aucun créneau disponible pour cette date. Choisissez une autre date
-              (dates actives au calendrier).
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {creneaux.map((creneau) => (
-                <button
-                  key={creneau.id}
-                  onClick={() => handleCreneauSelect(creneau)}
-                  className="border rounded-lg p-3 hover:border-primary-500 hover:bg-primary-50 transition-colors"
-                >
-                  {selectedPrestation?.dureeMinutes > (creneaux[0]?.dureeMinutes || 30)
-                    ? `${formatTime(creneau.dateHeure)} – ${formatTime(
-                        new Date(
-                          new Date(creneau.dateHeure).getTime() +
-                            selectedPrestation.dureeMinutes * 60000
-                        )
-                      )}`
-                    : formatTime(creneau.dateHeure)}
-                </button>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={() => setStep(3)}
-            className="mt-4 text-primary-600 hover:text-primary-700"
-          >
-            ← Retour
-          </button>
-        </div>
-      )}
-
-      {/* Step 5: Confirmation */}
-      {step === 5 && selectedCreneau && (
+      {step === 4 && selectedCreneau && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center">
             <CheckCircle className="h-5 w-5 mr-2" />
@@ -413,7 +377,8 @@ const Reservation = () => {
                 <strong>Date :</strong> {formatDate(selectedCreneau.dateHeure)}
               </p>
               <p>
-                <strong>Heure :</strong> {formatTime(selectedCreneau.dateHeure)}
+                <strong>Horaire :</strong>{" "}
+                {formatSlotPlage(selectedCreneau, dureeMinutes)}
               </p>
             </div>
           </div>
@@ -439,7 +404,7 @@ const Reservation = () => {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => setStep(4)}
+                onClick={() => setStep(3)}
                 className="flex-1 bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 ← Retour
