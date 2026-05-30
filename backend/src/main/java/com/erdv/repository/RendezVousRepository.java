@@ -85,4 +85,34 @@ public interface RendezVousRepository extends JpaRepository<RendezVous, Long> {
     List<RendezVous> findAllWithDetailsByIds(@Param("ids") List<Long> ids);
 
     Page<RendezVous> findAllByOrderByDateHeureDesc(Pageable pageable);
+
+    @Query("""
+            SELECT DISTINCT r FROM RendezVous r
+            JOIN FETCH r.utilisateur
+            JOIN FETCH r.prestataire
+            JOIN FETCH r.creneau
+            LEFT JOIN FETCH r.prestation
+            WHERE r.statut IN ('EN_ATTENTE', 'CONFIRME')
+            AND r.rappelJ1Envoye = false
+            AND r.dateHeure >= :debut
+            AND r.dateHeure <= :fin
+            """)
+    List<RendezVous> findPendingJ1Reminders(
+            @Param("debut") java.time.LocalDateTime debut,
+            @Param("fin") java.time.LocalDateTime fin);
+
+    @Query("""
+            SELECT DISTINCT r FROM RendezVous r
+            JOIN FETCH r.utilisateur
+            JOIN FETCH r.prestataire
+            JOIN FETCH r.creneau
+            LEFT JOIN FETCH r.prestation
+            WHERE r.statut = 'CONFIRME'
+            AND r.rappelH2Envoye = false
+            AND r.dateHeure >= :debut
+            AND r.dateHeure <= :fin
+            """)
+    List<RendezVous> findPendingH2Reminders(
+            @Param("debut") java.time.LocalDateTime debut,
+            @Param("fin") java.time.LocalDateTime fin);
 }

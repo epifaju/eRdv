@@ -181,6 +181,7 @@ public class RendezVousService {
                 emailService.envoyerConfirmationRendezVous(savedRendezVous);
             } else {
                 emailService.envoyerAccuseReceptionRendezVous(savedRendezVous);
+                emailService.envoyerNouvelleDemandeAuPrestataire(savedRendezVous);
             }
         } catch (Exception e) {
             System.err.println("Erreur lors de l'envoi de l'email: " + e.getMessage());
@@ -225,6 +226,9 @@ public class RendezVousService {
         if (rendezVous.getStatut() == RendezVous.Statut.ANNULE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Ce rendez-vous est déjà annulé");
         }
+        RendezVous.Statut statutAvant = rendezVous.getStatut();
+        boolean parPrestataireOuAdmin = isPrestataireOuAdmin(currentUser);
+
         rendezVous.setStatut(RendezVous.Statut.ANNULE);
 
         creneauHoraireService.libererCreneauxRendezVous(rendezVous);
@@ -232,7 +236,13 @@ public class RendezVousService {
         RendezVous savedRendezVous = rendezVousRepository.save(rendezVous);
 
         try {
-            emailService.envoyerAnnulationRendezVous(savedRendezVous);
+            if (parPrestataireOuAdmin && statutAvant == RendezVous.Statut.EN_ATTENTE) {
+                emailService.envoyerRefusRendezVous(savedRendezVous);
+            } else if (parPrestataireOuAdmin && statutAvant == RendezVous.Statut.CONFIRME) {
+                emailService.envoyerAnnulationParPrestataire(savedRendezVous);
+            } else {
+                emailService.envoyerAnnulationRendezVous(savedRendezVous);
+            }
         } catch (Exception e) {
             System.err.println("Erreur lors de l'envoi de l'email: " + e.getMessage());
         }
@@ -286,6 +296,8 @@ public class RendezVousService {
         rendezVous.setCreneau(newSlots.get(0));
         rendezVous.setCreneauxReserves(new ArrayList<>(newSlots));
         rendezVous.setDateHeure(newSlots.get(0).getDateHeure());
+        rendezVous.setRappelJ1Envoye(false);
+        rendezVous.setRappelH2Envoye(false);
 
         RendezVous savedRendezVous;
         try {
@@ -322,5 +334,10 @@ public class RendezVousService {
         RendezVous temp = new RendezVous();
         temp.setCreneauxReserves(slots);
         return temp;
+    }
+
+    private static boolean isPrestataireOuAdmin(Utilisateur user) {
+        return user.getRole() == Utilisateur.Role.ADMIN
+                || user.getRole() == Utilisateur.Role.PRESTATAIRE;
     }
 }

@@ -57,6 +57,12 @@ public class RendezVous {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "prestataire" })
     private List<CreneauHoraire> creneauxReserves = new ArrayList<>();
 
+    @Column(name = "rappel_j1_envoye", nullable = false)
+    private boolean rappelJ1Envoye = false;
+
+    @Column(name = "rappel_h2_envoye", nullable = false)
+    private boolean rappelH2Envoye = false;
+
     public enum Statut {
         EN_ATTENTE, CONFIRME, ANNULE
     }
@@ -143,5 +149,21 @@ public class RendezVous {
 
     public void setCreneauxReserves(List<CreneauHoraire> creneauxReserves) {
         this.creneauxReserves = creneauxReserves != null ? creneauxReserves : new ArrayList<>();
+    }
+
+    public boolean isRappelJ1Envoye() {
+        return rappelJ1Envoye;
+    }
+
+    public void setRappelJ1Envoye(boolean rappelJ1Envoye) {
+        this.rappelJ1Envoye = rappelJ1Envoye;
+    }
+
+    public boolean isRappelH2Envoye() {
+        return rappelH2Envoye;
+    }
+
+    public void setRappelH2Envoye(boolean rappelH2Envoye) {
+        this.rappelH2Envoye = rappelH2Envoye;
     }
 }
