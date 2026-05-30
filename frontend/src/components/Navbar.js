@@ -17,6 +17,7 @@ const Navbar = () => {
 
   const menuItems = [
     { name: "Accueil", path: "/", icon: null },
+    { name: "Établissements", path: "/etablissements", icon: null },
     ...(!isPrestataire ? [{ name: "Prestataires", path: "/prestataires", icon: null }] : []),
     ...(!isPrestataire
       ? [

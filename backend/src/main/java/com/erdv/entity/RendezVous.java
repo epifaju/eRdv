@@ -28,6 +28,11 @@ public class RendezVous {
     private Prestataire prestataire;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "etablissement_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private Etablissement etablissement;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creneau_id", nullable = false)
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
     private CreneauHoraire creneau;
@@ -101,6 +106,14 @@ public class RendezVous {
 
     public void setPrestataire(Prestataire prestataire) {
         this.prestataire = prestataire;
+    }
+
+    public Etablissement getEtablissement() {
+        return etablissement;
+    }
+
+    public void setEtablissement(Etablissement etablissement) {
+        this.etablissement = etablissement;
     }
 
     public CreneauHoraire getCreneau() {

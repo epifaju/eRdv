@@ -84,7 +84,7 @@ public class RefreshTokenService {
     }
 
     @Transactional
-    public void purgeExpired() {
-        refreshTokenRepository.deleteExpiredOrRevoked(Instant.now());
+    public int purgeExpired() {
+        return refreshTokenRepository.deleteExpiredOrRevoked(Instant.now());
     }
 }

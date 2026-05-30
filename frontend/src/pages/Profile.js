@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
-import { User, Mail, Phone, Lock } from "lucide-react";
+import { User, Mail, Phone, Lock, Download, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -19,6 +19,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     nom: "",
     email: "",
@@ -39,6 +41,7 @@ const Profile = () => {
           email: data.email || "",
           telephone: data.telephone || "",
         });
+        initialEmailRef.current = data.email || "";
       } catch (e) {
         toast.error(getApiMessage(e));
       } finally {
@@ -90,6 +93,46 @@ const Profile = () => {
       toast.error(getApiMessage(error));
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const { data } = await api.get("/users/me/export");
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `erdv-export-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Export téléchargé");
+    } catch (error) {
+      toast.error(getApiMessage(error));
+    }
+  };
+
+  const handleDeleteAccount = async (e) => {
+    e.preventDefault();
+    if (
+      !window.confirm(
+        "Supprimer définitivement votre compte ? Cette action est irréversible."
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api.delete("/users/me", { data: { motDePasse: deletePassword } });
+      toast.success("Compte supprimé");
+      logout({ silent: true });
+      navigate("/");
+    } catch (error) {
+      toast.error(getApiMessage(error));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -222,6 +265,43 @@ const Profile = () => {
           {passwordSaving ? "Modification..." : "Mettre à jour le mot de passe"}
         </button>
       </form>
+
+      <div className="bg-white rounded-lg shadow-md p-6 space-y-4 border border-gray-100">
+        <h2 className="text-lg font-semibold">Données personnelles (RGPD)</h2>
+        <p className="text-sm text-gray-600">
+          Exportez vos données ou supprimez votre compte. Les rendez-vous passés
+          restent conservés de façon anonymisée.
+        </p>
+        <button
+          type="button"
+          onClick={handleExportData}
+          className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm"
+        >
+          <Download className="h-4 w-4" />
+          Télécharger mes données (JSON)
+        </button>
+
+        <form onSubmit={handleDeleteAccount} className="pt-4 border-t space-y-3">
+          <h3 className="text-sm font-medium text-red-700 flex items-center gap-1">
+            <Trash2 className="h-4 w-4" /> Supprimer mon compte
+          </h3>
+          <input
+            type="password"
+            required
+            placeholder="Mot de passe pour confirmer"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            disabled={deleting}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm"
+          >
+            {deleting ? "Suppression..." : "Supprimer définitivement"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 };

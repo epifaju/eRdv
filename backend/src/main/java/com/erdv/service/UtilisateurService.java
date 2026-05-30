@@ -1,11 +1,16 @@
 package com.erdv.service;
 
 import com.erdv.dto.ChangePasswordRequest;
+import com.erdv.dto.DeleteAccountRequest;
 import com.erdv.dto.UpdateProfileRequest;
+import com.erdv.dto.UserDataExportResponse;
 import com.erdv.dto.UserProfileResponse;
+import com.erdv.dto.RendezVousResponse;
 import com.erdv.entity.Utilisateur;
 import com.erdv.exception.ApiException;
+import com.erdv.repository.RendezVousRepository;
 import com.erdv.repository.UtilisateurRepository;
+import com.erdv.service.RefreshTokenService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -14,17 +19,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UtilisateurService implements UserDetailsService {
 
     private final UtilisateurRepository utilisateurRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RendezVousRepository rendezVousRepository;
+    private final RefreshTokenService refreshTokenService;
 
-    public UtilisateurService(UtilisateurRepository utilisateurRepository, PasswordEncoder passwordEncoder) {
+    public UtilisateurService(UtilisateurRepository utilisateurRepository,
+            PasswordEncoder passwordEncoder,
+            RendezVousRepository rendezVousRepository,
+            RefreshTokenService refreshTokenService) {
         this.utilisateurRepository = utilisateurRepository;
         this.passwordEncoder = passwordEncoder;
+        this.rendezVousRepository = rendezVousRepository;
+        this.refreshTokenService = refreshTokenService;
     }
 
     @Override
@@ -97,5 +111,35 @@ public class UtilisateurService implements UserDetailsService {
 
     public void deleteUtilisateur(Long id) {
         utilisateurRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public UserDataExportResponse exportUserData(Long userId) {
+        Utilisateur u = getUtilisateurById(userId);
+        UserDataExportResponse export = new UserDataExportResponse();
+        export.setExportedAt(Instant.now());
+        export.setProfil(UserProfileResponse.from(u));
+        export.setRendezVous(RendezVousResponse.fromList(
+                rendezVousRepository.findByUtilisateurIdWithDetails(userId)));
+        return export;
+    }
+
+    @Transactional
+    public void deleteMyAccount(Long userId, DeleteAccountRequest request) {
+        Utilisateur u = getUtilisateurById(userId);
+        if (u.getRole() == Utilisateur.Role.ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN,
+                    "Les comptes administrateur ne peuvent pas être supprimés via cette action");
+        }
+        if (!passwordEncoder.matches(request.getMotDePasse(), u.getMotDePasse())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Mot de passe incorrect");
+        }
+        refreshTokenService.revokeAllForUser(userId);
+        u.setActif(false);
+        u.setNom("Compte supprimé");
+        u.setEmail("deleted-" + userId + "@anon.erdv.local");
+        u.setTelephone("0000000000");
+        u.setMotDePasse(passwordEncoder.encode(UUID.randomUUID().toString()));
+        utilisateurRepository.save(u);
     }
 }

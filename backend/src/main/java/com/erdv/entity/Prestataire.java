@@ -31,6 +31,11 @@ public class Prestataire {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "etablissement_id", nullable = false)
+    @JsonIgnore
+    private Etablissement etablissement;
+
     /** Non sérialisé : évite LazyInitializationException (open-in-view désactivé) et références circulaires. */
     @JsonIgnore
     @OneToMany(mappedBy = "prestataire", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -81,6 +86,35 @@ public class Prestataire {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public Etablissement getEtablissement() {
+        return etablissement;
+    }
+
+    public void setEtablissement(Etablissement etablissement) {
+        this.etablissement = etablissement;
+    }
+
+    public Long getEtablissementId() {
+        return etablissement != null ? etablissement.getId() : null;
+    }
+
+    public String getEtablissementNom() {
+        return etablissement != null ? etablissement.getNom() : null;
+    }
+
+    public String getEtablissementVille() {
+        return etablissement != null ? etablissement.getVille() : null;
+    }
+
+    public void setEtablissementId(Long etablissementId) {
+        if (etablissementId == null) {
+            return;
+        }
+        Etablissement e = new Etablissement();
+        e.setId(etablissementId);
+        this.etablissement = e;
     }
 
     public List<CreneauHoraire> getCreneaux() {

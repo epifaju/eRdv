@@ -11,6 +11,7 @@ import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Etablissements from "./pages/Etablissements";
 import Prestataires from "./pages/Prestataires";
 import PrestataireCreneaux from "./pages/PrestataireCreneaux";
 import Reservation from "./pages/Reservation";
@@ -62,6 +63,7 @@ const AppContent = () => {
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/etablissements" element={<Etablissements />} />
             <Route path="/prestataires" element={<Prestataires />} />
             <Route path="/prestataires/:id" element={<PrestataireCreneaux />} />
             <Route

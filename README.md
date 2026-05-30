@@ -21,10 +21,19 @@ Application multi-secteurs (cabinet, salon, garage…) : réservation en ligne, 
 
 | Domaine | Contenu |
 |--------|---------|
-| **CI/CD** | GitHub Actions : `mvn test` + build frontend sur push/PR |
+| **CI/CD** | GitHub Actions : tests, build frontend, build images Docker |
 | **Sécurité auth** | Rate limiting login/register/forgot-password, refresh tokens révocables (`POST /auth/logout`) |
-| **Observabilité** | Métriques Prometheus (`/actuator/prometheus`, rôle ADMIN) |
+| **Observabilité** | Métriques Prometheus, logs JSON (Logstash) avec corrélation `X-Request-Id` |
 | **Documentation** | OpenAPI / Swagger UI en dev (`APP_OPENAPI_ENABLED=true`) |
+
+## Multi-établissement (V4)
+
+| Domaine | Contenu |
+|--------|---------|
+| **Établissements** | Cabinets / sites, prestataires et RDV rattachés, parcours réservation en 5 étapes |
+| **API** | `GET /etablissements`, `GET /etablissements/{id}/prestataires`, CRUD admin |
+| **RGPD** | `GET /users/me/export`, `DELETE /users/me` (anonymisation + révocation sessions) |
+| **Roadmap** | SMS, paiement en ligne (non implémentés) |
 
 ---
 
@@ -136,6 +145,9 @@ Variables principales (voir `.env.example`) :
 | `APP_OPENAPI_ENABLED` | Swagger UI (`true` en dev/Docker local) |
 | `APP_AUTH_RATE_LIMIT_MAX` | Tentatives auth max. par IP / fenêtre (défaut `20`) |
 | `APP_AUTH_RATE_LIMIT_WINDOW` | Fenêtre rate limit en secondes (défaut `60`) |
+| `APP_AUTH_REFRESH_TOKEN_PURGE_ENABLED` | Purge nocturne des refresh tokens (défaut `true`) |
+| `APP_AUTH_REFRESH_TOKEN_PURGE_CRON` | Cron Spring de la purge (défaut `0 0 3 * * *`) |
+| **Logs JSON** | Profil `prod` seul → JSON Logstash ; ajouter `plain-logs` pour texte (Docker local) |
 
 ### Scripts utiles
 

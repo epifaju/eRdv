@@ -1,21 +1,36 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import api from "../api/client";
-import { User, Mail, Calendar, Clock } from "lucide-react";
+import { User, Mail, Calendar, Clock, Building2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const Prestataires = () => {
+  const [searchParams] = useSearchParams();
+  const etablissementFilter = searchParams.get("etablissement");
   const [prestataires, setPrestataires] = useState([]);
+  const [etablissementInfo, setEtablissementInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchPrestataires();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etablissementFilter]);
 
   const fetchPrestataires = async () => {
+    setLoading(true);
     try {
-      const response = await api.get("/prestataires");
-      setPrestataires(response.data);
+      if (etablissementFilter) {
+        const [prestRes, etabRes] = await Promise.all([
+          api.get("/prestataires", { params: { etablissementId: etablissementFilter } }),
+          api.get(`/etablissements/${etablissementFilter}`),
+        ]);
+        setPrestataires(prestRes.data);
+        setEtablissementInfo(etabRes.data);
+      } else {
+        const response = await api.get("/prestataires");
+        setPrestataires(response.data);
+        setEtablissementInfo(null);
+      }
     } catch (error) {
       toast.error("Erreur lors du chargement des prestataires");
       console.error("Erreur:", error);
@@ -36,12 +51,30 @@ const Prestataires = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Nos Prestataires
+          {etablissementInfo ? etablissementInfo.nom : "Nos Prestataires"}
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-          Découvrez notre équipe de professionnels qualifiés prêts à vous
-          accompagner.
+          {etablissementInfo
+            ? `Professionnels disponibles à ${etablissementInfo.ville || "cet établissement"}.`
+            : "Découvrez notre équipe de professionnels qualifiés prêts à vous accompagner."}
         </p>
+        {etablissementInfo && (
+          <Link
+            to="/etablissements"
+            className="inline-block mt-4 text-primary-600 hover:text-primary-700 text-sm"
+          >
+            ← Tous les établissements
+          </Link>
+        )}
+        {!etablissementFilter && (
+          <Link
+            to="/etablissements"
+            className="inline-flex items-center gap-1 mt-4 text-primary-600 hover:text-primary-700 text-sm"
+          >
+            <Building2 className="h-4 w-4" />
+            Parcourir par établissement
+          </Link>
+        )}
       </div>
 
       {prestataires.length === 0 ? (
@@ -75,6 +108,11 @@ const Prestataires = () => {
                     <p className="text-sm text-gray-600">
                       {prestataire.specialite}
                     </p>
+                    {prestataire.etablissementNom && !etablissementFilter && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {prestataire.etablissementNom}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -87,7 +125,7 @@ const Prestataires = () => {
 
                 <div className="flex space-x-2">
                   <Link
-                    to={`/reservation?prestataire=${prestataire.id}`}
+                    to={`/reservation?${etablissementFilter ? `etablissement=${etablissementFilter}&` : ""}prestataire=${prestataire.id}`}
                     className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors text-center"
                   >
                     <Calendar className="h-4 w-4 inline mr-1" />

@@ -16,6 +16,7 @@ public class RendezVousResponse {
     private String statut;
     private UtilisateurSummaryResponse utilisateur;
     private PrestataireSummaryResponse prestataire;
+    private EtablissementSummaryResponse etablissement;
     private CreneauSummaryResponse creneau;
     private PrestationResponse prestation;
     private Boolean annulableParClient;
@@ -35,6 +36,7 @@ public class RendezVousResponse {
         r.statut = rdv.getStatut() != null ? rdv.getStatut().name() : null;
         r.utilisateur = UtilisateurSummaryResponse.from(rdv.getUtilisateur());
         r.prestataire = PrestataireSummaryResponse.from(rdv.getPrestataire());
+        r.etablissement = EtablissementSummaryResponse.from(rdv.getEtablissement());
         r.creneau = CreneauSummaryResponse.from(rdv.getCreneau());
         r.prestation = PrestationResponse.from(rdv.getPrestation());
         return r;
@@ -134,6 +136,14 @@ public class RendezVousResponse {
 
     public void setPrestataire(PrestataireSummaryResponse prestataire) {
         this.prestataire = prestataire;
+    }
+
+    public EtablissementSummaryResponse getEtablissement() {
+        return etablissement;
+    }
+
+    public void setEtablissement(EtablissementSummaryResponse etablissement) {
+        this.etablissement = etablissement;
     }
 
     public CreneauSummaryResponse getCreneau() {

@@ -163,6 +163,7 @@ public class RendezVousService {
         rendezVous.setCreneau(creneau);
         rendezVous.setCreneauxReserves(new ArrayList<>(slots));
         rendezVous.setPrestataire(creneau.getPrestataire());
+        rendezVous.setEtablissement(creneau.getPrestataire().getEtablissement());
         rendezVous.setPrestation(prestation);
         rendezVous.setDateHeure(creneau.getDateHeure());
         rendezVous.setService(serviceLabel.trim());

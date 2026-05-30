@@ -1,7 +1,9 @@
 package com.erdv.controller;
 
 import com.erdv.dto.ChangePasswordRequest;
+import com.erdv.dto.DeleteAccountRequest;
 import com.erdv.dto.UpdateProfileRequest;
+import com.erdv.dto.UserDataExportResponse;
 import com.erdv.dto.UserProfileResponse;
 import com.erdv.entity.Utilisateur;
 import com.erdv.service.UtilisateurService;
@@ -36,6 +38,19 @@ public class UserController {
     public void changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         Utilisateur u = currentUser();
         utilisateurService.changePassword(u.getId(), request);
+    }
+
+    @GetMapping("/me/export")
+    public ResponseEntity<UserDataExportResponse> exportMe() {
+        Utilisateur u = currentUser();
+        return ResponseEntity.ok(utilisateurService.exportUserData(u.getId()));
+    }
+
+    @DeleteMapping("/me")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMe(@Valid @RequestBody DeleteAccountRequest request) {
+        Utilisateur u = currentUser();
+        utilisateurService.deleteMyAccount(u.getId(), request);
     }
 
     private static Utilisateur currentUser() {

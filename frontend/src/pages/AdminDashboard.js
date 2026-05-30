@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import AdminCatalogue from "../components/AdminCatalogue";
+import AdminEtablissements from "../components/AdminEtablissements";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("rendez-vous");
@@ -20,6 +21,7 @@ const AdminDashboard = () => {
   const [rdvTotalPages, setRdvTotalPages] = useState(0);
   const RDV_PAGE_SIZE = 20;
   const [prestataires, setPrestataires] = useState([]);
+  const [etablissements, setEtablissements] = useState([]);
   const [creneaux, setCreneaux] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showPrestataireForm, setShowPrestataireForm] = useState(false);
@@ -30,6 +32,7 @@ const AdminDashboard = () => {
     nom: "",
     specialite: "",
     email: "",
+    etablissementId: "",
   });
   const [creneauFormData, setCreneauFormData] = useState({
     prestataireId: "",
@@ -75,13 +78,15 @@ const AdminDashboard = () => {
       const settled = await Promise.allSettled([
         api.get("/prestataires"),
         api.get("/creneaux"),
+        api.get("/etablissements/admin/all"),
       ]);
-      const labels = ["prestataires", "créneaux"];
+      const labels = ["prestataires", "créneaux", "établissements"];
       settled.forEach((result, i) => {
         if (result.status === "fulfilled") {
           const data = result.value.data;
           if (i === 0) setPrestataires(data);
           if (i === 1) setCreneaux(data);
+          if (i === 2) setEtablissements(data);
         } else {
           console.error(`GET /${labels[i]}`, result.reason);
         }
@@ -103,20 +108,26 @@ const AdminDashboard = () => {
       if (editingPrestataire) {
         const { data } = await api.put(
           `/prestataires/${editingPrestataire.id}`,
-          formData
+          {
+            ...formData,
+            etablissementId: Number(formData.etablissementId),
+          }
         );
         setPrestataires((prev) =>
           prev.map((p) => (p.id === data.id ? data : p))
         );
         toast.success("Prestataire modifié avec succès");
       } else {
-        const { data } = await api.post("/prestataires", formData);
+        const { data } = await api.post("/prestataires", {
+          ...formData,
+          etablissementId: Number(formData.etablissementId),
+        });
         setPrestataires((prev) => [...prev, data]);
         toast.success("Prestataire créé avec succès");
       }
       setShowPrestataireForm(false);
       setEditingPrestataire(null);
-      setFormData({ nom: "", specialite: "", email: "" });
+      setFormData({ nom: "", specialite: "", email: "", etablissementId: "" });
       fetchData({ silent: true });
     } catch (error) {
       const msg =
@@ -135,6 +146,9 @@ const AdminDashboard = () => {
       nom: prestataire.nom,
       specialite: prestataire.specialite,
       email: prestataire.email,
+      etablissementId: prestataire.etablissementId
+        ? String(prestataire.etablissementId)
+        : "",
     });
     setShowPrestataireForm(true);
   };
@@ -350,6 +364,16 @@ const AdminDashboard = () => {
             Prestations & plages
           </button>
           <button
+            onClick={() => setActiveTab("etablissements")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "etablissements"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Établissements
+          </button>
+          <button
             onClick={() => setActiveTab("creneaux")}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === "creneaux"
@@ -467,7 +491,7 @@ const AdminDashboard = () => {
             <button
               onClick={() => {
                 setEditingPrestataire(null);
-                setFormData({ nom: "", specialite: "", email: "" });
+                setFormData({ nom: "", specialite: "", email: "", etablissementId: "" });
                 setShowPrestataireForm(true);
               }}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
@@ -496,9 +520,15 @@ const AdminDashboard = () => {
                     </p>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 mb-4">
-                  {prestataire.email}
-                </p>
+                <p className="text-sm text-gray-600 mb-1">{prestataire.email}</p>
+                {prestataire.etablissementNom && (
+                  <p className="text-xs text-gray-500 mb-4">
+                    {prestataire.etablissementNom}
+                    {prestataire.etablissementVille
+                      ? ` · ${prestataire.etablissementVille}`
+                      : ""}
+                  </p>
+                )}
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEditPrestataire(prestataire)}
@@ -525,6 +555,8 @@ const AdminDashboard = () => {
       {activeTab === "catalogue" && (
         <AdminCatalogue prestataires={prestataires} />
       )}
+
+      {activeTab === "etablissements" && <AdminEtablissements />}
 
       {activeTab === "creneaux" && (
         <div>
@@ -646,6 +678,29 @@ const AdminDashboard = () => {
                       className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                       required
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Établissement
+                    </label>
+                    <select
+                      value={formData.etablissementId}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          etablissementId: e.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2"
+                      required
+                    >
+                      <option value="">— Choisir —</option>
+                      {etablissements.map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.libelleComplet || e.nom}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">

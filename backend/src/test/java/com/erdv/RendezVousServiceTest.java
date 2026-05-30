@@ -2,11 +2,13 @@ package com.erdv;
 
 import com.erdv.dto.CreateRendezVousRequest;
 import com.erdv.entity.CreneauHoraire;
+import com.erdv.entity.Etablissement;
 import com.erdv.entity.Prestataire;
 import com.erdv.entity.Prestation;
 import com.erdv.entity.Utilisateur;
 import com.erdv.exception.ApiException;
 import com.erdv.repository.CreneauHoraireRepository;
+import com.erdv.repository.EtablissementRepository;
 import com.erdv.repository.PrestationRepository;
 import com.erdv.repository.PrestataireRepository;
 import com.erdv.repository.RefreshTokenRepository;
@@ -43,6 +45,9 @@ class RendezVousServiceTest {
     private PrestataireRepository prestataireRepository;
 
     @Autowired
+    private EtablissementRepository etablissementRepository;
+
+    @Autowired
     private CreneauHoraireRepository creneauHoraireRepository;
 
     @Autowired
@@ -63,6 +68,7 @@ class RendezVousServiceTest {
         prestationRepository.deleteAll();
         creneauHoraireRepository.deleteAll();
         prestataireRepository.deleteAll();
+        etablissementRepository.deleteAll();
         refreshTokenRepository.deleteAll();
         utilisateurRepository.deleteAll();
 
@@ -74,10 +80,17 @@ class RendezVousServiceTest {
         client.setRole(Utilisateur.Role.USER);
         client = utilisateurRepository.save(client);
 
+        Etablissement etab = new Etablissement();
+        etab.setNom("Cabinet Test");
+        etab.setVille("Paris");
+        etab.setActif(true);
+        etab = etablissementRepository.save(etab);
+
         Prestataire p = new Prestataire();
         p.setNom("Dr. Test");
         p.setSpecialite("Généraliste");
         p.setEmail("dr@test.com");
+        p.setEtablissement(etab);
         p = prestataireRepository.save(p);
 
         creneau = new CreneauHoraire();

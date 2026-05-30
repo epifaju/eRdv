@@ -3,8 +3,10 @@ package com.erdv;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.erdv.dto.AuthRequest;
 import com.erdv.dto.PrestationRequest;
+import com.erdv.entity.Etablissement;
 import com.erdv.entity.Prestataire;
 import com.erdv.entity.Utilisateur;
+import com.erdv.repository.EtablissementRepository;
 import com.erdv.repository.PrestataireRepository;
 import com.erdv.repository.RefreshTokenRepository;
 import com.erdv.repository.UtilisateurRepository;
@@ -43,6 +45,9 @@ class PrestataireCatalogueSecurityTest {
     private PrestataireRepository prestataireRepository;
 
     @Autowired
+    private EtablissementRepository etablissementRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Prestataire prestataire;
@@ -53,17 +58,26 @@ class PrestataireCatalogueSecurityTest {
         refreshTokenRepository.deleteAll();
         utilisateurRepository.deleteAll();
         prestataireRepository.deleteAll();
+        etablissementRepository.deleteAll();
+
+        Etablissement etab = new Etablissement();
+        etab.setNom("Cabinet Test");
+        etab.setVille("Paris");
+        etab.setActif(true);
+        etab = etablissementRepository.save(etab);
 
         prestataire = new Prestataire();
         prestataire.setNom("Dr. Martin");
         prestataire.setSpecialite("Généraliste");
         prestataire.setEmail("martin@erdv.com");
+        prestataire.setEtablissement(etab);
         prestataire = prestataireRepository.save(prestataire);
 
         autrePrestataire = new Prestataire();
         autrePrestataire.setNom("Dr. Autre");
         autrePrestataire.setSpecialite("Dentiste");
         autrePrestataire.setEmail("autre@erdv.com");
+        autrePrestataire.setEtablissement(etab);
         autrePrestataire = prestataireRepository.save(autrePrestataire);
 
         Utilisateur prest = new Utilisateur();

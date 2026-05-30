@@ -58,6 +58,9 @@ public class Utilisateur implements UserDetails {
     @JsonIgnore
     private Prestataire prestataire;
 
+    @Column(nullable = false)
+    private boolean actif = true;
+
     public enum Role {
         USER, ADMIN, PRESTATAIRE
     }
@@ -142,6 +145,14 @@ public class Utilisateur implements UserDetails {
         return prestataire != null ? prestataire.getId() : null;
     }
 
+    public boolean isActif() {
+        return actif;
+    }
+
+    public void setActif(boolean actif) {
+        this.actif = actif;
+    }
+
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -176,6 +187,6 @@ public class Utilisateur implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return actif;
     }
 }

@@ -18,8 +18,9 @@ public class PrestataireController {
     private PrestataireService prestataireService;
 
     @GetMapping
-    public ResponseEntity<List<Prestataire>> getAllPrestataires() {
-        return ResponseEntity.ok(prestataireService.getAllPrestataires());
+    public ResponseEntity<List<Prestataire>> getAllPrestataires(
+            @RequestParam(required = false) Long etablissementId) {
+        return ResponseEntity.ok(prestataireService.getAllPrestataires(etablissementId));
     }
 
     @GetMapping("/{id}")

@@ -2,12 +2,14 @@ package com.erdv.config;
 
 import com.erdv.entity.Utilisateur;
 import com.erdv.entity.Prestataire;
+import com.erdv.entity.Etablissement;
 import com.erdv.entity.CreneauHoraire;
 import com.erdv.entity.RendezVous;
 import com.erdv.entity.Prestation;
 import com.erdv.entity.PlageRecurrente;
 import com.erdv.repository.UtilisateurRepository;
 import com.erdv.repository.PrestataireRepository;
+import com.erdv.repository.EtablissementRepository;
 import com.erdv.repository.CreneauHoraireRepository;
 import com.erdv.repository.RendezVousRepository;
 import com.erdv.repository.PrestationRepository;
@@ -31,6 +33,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private PrestataireRepository prestataireRepository;
+
+    @Autowired
+    private EtablissementRepository etablissementRepository;
 
     @Autowired
     private CreneauHoraireRepository creneauHoraireRepository;
@@ -81,9 +86,21 @@ public class DataInitializer implements CommandLineRunner {
         }
 
         if (prestataireRepository.count() == 0) {
-            seedPrestataire("Dr. Martin", "Médecin généraliste", "martin@erdv.com");
-            seedPrestataire("Dr. Dubois", "Dentiste", "dubois@erdv.com");
-            seedPrestataire("Mme. Laurent", "Kinésithérapeute", "laurent@erdv.com");
+            Etablissement paris = seedEtablissement(
+                    "Cabinet Paris Centre",
+                    "12 avenue de la République",
+                    "Paris",
+                    "75011",
+                    "0142000000");
+            Etablissement lyon = seedEtablissement(
+                    "Centre Santé Lyon",
+                    "5 place Bellecour",
+                    "Lyon",
+                    "69002",
+                    "0472000000");
+            seedPrestataire("Dr. Martin", "Médecin généraliste", "martin@erdv.com", paris);
+            seedPrestataire("Dr. Dubois", "Dentiste", "dubois@erdv.com", paris);
+            seedPrestataire("Mme. Laurent", "Kinésithérapeute", "laurent@erdv.com", lyon);
         }
 
         seedCatalogueEtPlages();
@@ -107,6 +124,7 @@ public class DataInitializer implements CommandLineRunner {
                             RendezVous rdv = new RendezVous();
                             rdv.setUtilisateur(user);
                             rdv.setPrestataire(prestataire);
+                            rdv.setEtablissement(prestataire.getEtablissement());
                             rdv.setCreneau(creneau);
                             rdv.setPrestation(prestation);
                             rdv.setDateHeure(creneau.getDateHeure());
@@ -118,11 +136,23 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void seedPrestataire(String nom, String specialite, String email) {
+    private Etablissement seedEtablissement(String nom, String adresse, String ville, String cp, String tel) {
+        Etablissement e = new Etablissement();
+        e.setNom(nom);
+        e.setAdresse(adresse);
+        e.setVille(ville);
+        e.setCodePostal(cp);
+        e.setTelephone(tel);
+        e.setActif(true);
+        return etablissementRepository.save(e);
+    }
+
+    private void seedPrestataire(String nom, String specialite, String email, Etablissement etablissement) {
         Prestataire p = new Prestataire();
         p.setNom(nom);
         p.setSpecialite(specialite);
         p.setEmail(email);
+        p.setEtablissement(etablissement);
         prestataireRepository.save(p);
     }
 
