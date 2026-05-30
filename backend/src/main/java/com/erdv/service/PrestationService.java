@@ -29,7 +29,7 @@ public class PrestationService {
 
     @Transactional(readOnly = true)
     public List<PrestationResponse> listActivesByPrestataire(Long prestataireId) {
-        prestataireService.getPrestataireById(prestataireId);
+        prestataireService.getPrestataireEntityById(prestataireId);
         return prestationRepository.findByPrestataireIdAndActifTrueOrderByNomAsc(prestataireId).stream()
                 .map(PrestationResponse::from)
                 .toList();
@@ -52,7 +52,7 @@ public class PrestationService {
     public PrestationResponse creer(PrestationRequest request) {
         Utilisateur user = prestataireAccessService.currentUser();
         Long prestataireId = prestataireAccessService.resolvePrestataireIdForWrite(user, request.getPrestataireId());
-        Prestataire prestataire = prestataireService.getPrestataireById(prestataireId);
+        Prestataire prestataire = prestataireService.getPrestataireEntityById(prestataireId);
         Prestation p = mapRequest(new Prestation(), request);
         p.setPrestataire(prestataire);
         return PrestationResponse.from(prestationRepository.save(p));
@@ -65,7 +65,7 @@ public class PrestationService {
         if (request.getPrestataireId() != null) {
             Long prestataireId = prestataireAccessService.resolvePrestataireIdForWrite(
                     prestataireAccessService.currentUser(), request.getPrestataireId());
-            p.setPrestataire(prestataireService.getPrestataireById(prestataireId));
+            p.setPrestataire(prestataireService.getPrestataireEntityById(prestataireId));
         }
         return PrestationResponse.from(prestationRepository.save(p));
     }

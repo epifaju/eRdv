@@ -182,7 +182,7 @@ public class CreneauHoraireService {
     }
 
     public CreneauHoraire creerCreneau(CreneauHoraire creneau) {
-        Prestataire prestataire = prestataireService.getPrestataireById(creneau.getPrestataire().getId());
+        Prestataire prestataire = prestataireService.getPrestataireEntityById(creneau.getPrestataire().getId());
         creneau.setPrestataire(prestataire);
         return creneauHoraireRepository.save(creneau);
     }

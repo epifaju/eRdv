@@ -2,7 +2,7 @@ package com.erdv.controller;
 
 import com.erdv.dto.EtablissementRequest;
 import com.erdv.dto.EtablissementResponse;
-import com.erdv.entity.Prestataire;
+import com.erdv.dto.PrestataireResponse;
 import com.erdv.service.EtablissementService;
 import com.erdv.service.PrestataireService;
 import jakarta.validation.Valid;
@@ -34,7 +34,7 @@ public class EtablissementController {
     }
 
     @GetMapping("/{id}/prestataires")
-    public ResponseEntity<List<Prestataire>> getPrestataires(@PathVariable Long id) {
+    public ResponseEntity<List<PrestataireResponse>> getPrestataires(@PathVariable Long id) {
         etablissementService.getByIdPublic(id);
         return ResponseEntity.ok(prestataireService.getPrestatairesByEtablissement(id));
     }

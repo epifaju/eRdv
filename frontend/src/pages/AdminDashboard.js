@@ -104,24 +104,29 @@ const AdminDashboard = () => {
 
   const handlePrestataireSubmit = async (e) => {
     e.preventDefault();
+    const etablissementId = Number(formData.etablissementId);
+    if (!formData.etablissementId || Number.isNaN(etablissementId)) {
+      toast.error("Sélectionnez un établissement.");
+      return;
+    }
+    const payload = {
+      nom: formData.nom.trim(),
+      specialite: formData.specialite.trim(),
+      email: formData.email.trim(),
+      etablissementId,
+    };
     try {
       if (editingPrestataire) {
         const { data } = await api.put(
           `/prestataires/${editingPrestataire.id}`,
-          {
-            ...formData,
-            etablissementId: Number(formData.etablissementId),
-          }
+          payload
         );
         setPrestataires((prev) =>
           prev.map((p) => (p.id === data.id ? data : p))
         );
         toast.success("Prestataire modifié avec succès");
       } else {
-        const { data } = await api.post("/prestataires", {
-          ...formData,
-          etablissementId: Number(formData.etablissementId),
-        });
+        const { data } = await api.post("/prestataires", payload);
         setPrestataires((prev) => [...prev, data]);
         toast.success("Prestataire créé avec succès");
       }

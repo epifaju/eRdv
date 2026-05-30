@@ -96,14 +96,17 @@ public class Prestataire {
         this.etablissement = etablissement;
     }
 
+    @JsonIgnore
     public Long getEtablissementId() {
         return etablissement != null ? etablissement.getId() : null;
     }
 
+    @JsonIgnore
     public String getEtablissementNom() {
         return etablissement != null ? etablissement.getNom() : null;
     }
 
+    @JsonIgnore
     public String getEtablissementVille() {
         return etablissement != null ? etablissement.getVille() : null;
     }

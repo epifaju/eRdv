@@ -43,7 +43,7 @@ public class PlageRecurrenteService {
         validateHeures(request);
         Utilisateur user = prestataireAccessService.currentUser();
         Long prestataireId = prestataireAccessService.resolvePrestataireIdForWrite(user, request.getPrestataireId());
-        Prestataire prestataire = prestataireService.getPrestataireById(prestataireId);
+        Prestataire prestataire = prestataireService.getPrestataireEntityById(prestataireId);
         PlageRecurrente plage = mapRequest(new PlageRecurrente(), request);
         plage.setPrestataire(prestataire);
         return PlageRecurrenteResponse.from(plageRecurrenteRepository.save(plage));
@@ -58,7 +58,7 @@ public class PlageRecurrenteService {
         if (request.getPrestataireId() != null) {
             Long prestataireId = prestataireAccessService.resolvePrestataireIdForWrite(
                     prestataireAccessService.currentUser(), request.getPrestataireId());
-            plage.setPrestataire(prestataireService.getPrestataireById(prestataireId));
+            plage.setPrestataire(prestataireService.getPrestataireEntityById(prestataireId));
         }
         return PlageRecurrenteResponse.from(plageRecurrenteRepository.save(plage));
     }
