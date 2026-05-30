@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import axios from "axios";
+import api from "../api/client";
 import { User, Mail, Calendar, Clock, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -17,12 +17,12 @@ const PrestataireCreneaux = () => {
   const fetchPrestataireAndCreneaux = async () => {
     try {
       // Récupérer les informations du prestataire
-      const prestataireResponse = await axios.get(`/prestataires`);
+      const prestataireResponse = await api.get(`/prestataires`);
       const prestataireData = prestataireResponse.data.find((p) => p.id == id);
       setPrestataire(prestataireData);
 
       // Récupérer les créneaux disponibles
-      const creneauxResponse = await axios.get(
+      const creneauxResponse = await api.get(
         `/creneaux/prestataire/${id}/disponibles`
       );
       setCreneaux(creneauxResponse.data);

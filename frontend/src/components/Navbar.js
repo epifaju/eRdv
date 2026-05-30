@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { Menu, X, Calendar, User, Settings, LogOut } from "lucide-react";
+import { Menu, X, Calendar, User, Settings, LogOut, UserCircle, Briefcase } from "lucide-react";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -13,13 +13,23 @@ const Navbar = () => {
     navigate("/");
   };
 
+  const isPrestataire = user?.role === "PRESTATAIRE";
+
   const menuItems = [
     { name: "Accueil", path: "/", icon: null },
-    { name: "Prestataires", path: "/prestataires", icon: null },
-    { name: "Prendre RDV", path: "/reservation", icon: Calendar },
-    { name: "Mes Rendez-vous", path: "/mes-rendez-vous", icon: User },
+    ...(!isPrestataire ? [{ name: "Prestataires", path: "/prestataires", icon: null }] : []),
+    ...(!isPrestataire
+      ? [
+          { name: "Prendre RDV", path: "/reservation", icon: Calendar },
+          { name: "Mes Rendez-vous", path: "/mes-rendez-vous", icon: User },
+        ]
+      : []),
+    { name: "Profil", path: "/profil", icon: UserCircle },
     ...(user?.role === "ADMIN"
       ? [{ name: "Admin", path: "/admin", icon: Settings }]
+      : []),
+    ...(user?.role === "PRESTATAIRE"
+      ? [{ name: "Espace prestataire", path: "/prestataire", icon: Briefcase }]
       : []),
   ];
 

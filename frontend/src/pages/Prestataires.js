@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import api from "../api/client";
 import { User, Mail, Calendar, Clock } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -14,7 +14,7 @@ const Prestataires = () => {
 
   const fetchPrestataires = async () => {
     try {
-      const response = await axios.get("/prestataires");
+      const response = await api.get("/prestataires");
       setPrestataires(response.data);
     } catch (error) {
       toast.error("Erreur lors du chargement des prestataires");

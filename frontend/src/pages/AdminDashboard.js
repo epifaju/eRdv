@@ -1,21 +1,24 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api/client";
+import { RDV_TOUS_ADMIN } from "../api/paths";
 import {
   Users,
   Calendar,
-  Settings,
   Plus,
   Edit,
   Trash2,
   CheckCircle,
-  X,
   Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import AdminCatalogue from "../components/AdminCatalogue";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("rendez-vous");
   const [rendezVous, setRendezVous] = useState([]);
+  const [rdvPage, setRdvPage] = useState(0);
+  const [rdvTotalPages, setRdvTotalPages] = useState(0);
+  const RDV_PAGE_SIZE = 20;
   const [prestataires, setPrestataires] = useState([]);
   const [creneaux, setCreneaux] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,24 +39,61 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchData = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (activeTab === "rendez-vous") {
+      fetchRendezVous(rdvPage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rdvPage, activeTab]);
+
+  const fetchRendezVous = async (page = 0) => {
     try {
-      const [rdvResponse, prestatairesResponse, creneauxResponse] =
-        await Promise.all([
-          axios.get("/rendez-vous"),
-          axios.get("/prestataires"),
-          axios.get("/creneaux"),
-        ]);
-      setRendezVous(rdvResponse.data);
-      setPrestataires(prestatairesResponse.data);
-      setCreneaux(creneauxResponse.data);
+      const { data } = await api.get(RDV_TOUS_ADMIN, {
+        params: { page, size: RDV_PAGE_SIZE, sort: "dateHeure,desc" },
+      });
+      setRendezVous(data.content ?? data);
+      setRdvTotalPages(data.totalPages ?? 1);
     } catch (error) {
-      toast.error("Erreur lors du chargement des données");
+      console.error("GET rendez-vous/tous", error);
+      toast.error("Impossible de charger les rendez-vous");
+    }
+  };
+
+  /**
+   * Chaque liste est mise à jour indépendamment : un échec sur /rendez-vous/tous
+   * ne doit pas empêcher de charger /prestataires (sinon le select créneaux reste vide).
+   * @param {object} opts
+   * @param {boolean} [opts.silent] — si true, pas de spinner plein écran (après création / édition).
+   */
+  const fetchData = async (opts = {}) => {
+    const silent = opts.silent === true;
+    if (!silent) setLoading(true);
+    try {
+      const settled = await Promise.allSettled([
+        api.get("/prestataires"),
+        api.get("/creneaux"),
+      ]);
+      const labels = ["prestataires", "créneaux"];
+      settled.forEach((result, i) => {
+        if (result.status === "fulfilled") {
+          const data = result.value.data;
+          if (i === 0) setPrestataires(data);
+          if (i === 1) setCreneaux(data);
+        } else {
+          console.error(`GET /${labels[i]}`, result.reason);
+        }
+      });
+      const anyFailed = settled.some((r) => r.status === "rejected");
+      if (anyFailed && !silent) {
+        toast.error(
+          "Certaines données n’ont pas pu être chargées. Réessayez ou vérifiez la console."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -61,18 +101,31 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       if (editingPrestataire) {
-        await axios.put(`/prestataires/${editingPrestataire.id}`, formData);
+        const { data } = await api.put(
+          `/prestataires/${editingPrestataire.id}`,
+          formData
+        );
+        setPrestataires((prev) =>
+          prev.map((p) => (p.id === data.id ? data : p))
+        );
         toast.success("Prestataire modifié avec succès");
       } else {
-        await axios.post("/prestataires", formData);
+        const { data } = await api.post("/prestataires", formData);
+        setPrestataires((prev) => [...prev, data]);
         toast.success("Prestataire créé avec succès");
       }
       setShowPrestataireForm(false);
       setEditingPrestataire(null);
       setFormData({ nom: "", specialite: "", email: "" });
-      fetchData();
+      fetchData({ silent: true });
     } catch (error) {
-      toast.error("Erreur lors de la sauvegarde");
+      const msg =
+        error.response?.data?.message ||
+        (typeof error.response?.data === "string"
+          ? error.response.data
+          : null) ||
+        "Erreur lors de la sauvegarde";
+      toast.error(msg);
     }
   };
 
@@ -93,9 +146,10 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.delete(`/prestataires/${id}`);
+      await api.delete(`/prestataires/${id}`);
+      setPrestataires((prev) => prev.filter((p) => p.id !== id));
       toast.success("Prestataire supprimé avec succès");
-      fetchData();
+      fetchData({ silent: true });
     } catch (error) {
       toast.error("Erreur lors de la suppression");
     }
@@ -103,18 +157,32 @@ const AdminDashboard = () => {
 
   const handleCreneauSubmit = async (e) => {
     e.preventDefault();
+    const prestataireIdNum = parseInt(creneauFormData.prestataireId, 10);
+    if (!creneauFormData.prestataireId || Number.isNaN(prestataireIdNum)) {
+      toast.error("Sélectionnez un prestataire dans la liste.");
+      return;
+    }
     try {
+      // datetime-local → ISO LocalDateTime (secondes explicites pour Jackson)
+      let dh = creneauFormData.dateHeure;
+      if (dh && dh.length === 16) {
+        dh = `${dh}:00`;
+      }
+      if (!dh) {
+        toast.error("Indiquez une date et une heure.");
+        return;
+      }
       const creneauData = {
-        prestataire: { id: parseInt(creneauFormData.prestataireId) },
-        dateHeure: creneauFormData.dateHeure,
+        prestataire: { id: prestataireIdNum },
+        dateHeure: dh,
         disponible: creneauFormData.disponible,
       };
 
       if (editingCreneau) {
-        await axios.put(`/creneaux/${editingCreneau.id}`, creneauData);
+        await api.put(`/creneaux/${editingCreneau.id}`, creneauData);
         toast.success("Créneau modifié avec succès");
       } else {
-        await axios.post("/creneaux", creneauData);
+        await api.post("/creneaux", creneauData);
         toast.success("Créneau créé avec succès");
       }
       setShowCreneauForm(false);
@@ -124,10 +192,33 @@ const AdminDashboard = () => {
         dateHeure: "",
         disponible: true,
       });
-      fetchData();
+      fetchData({ silent: true });
     } catch (error) {
-      toast.error("Erreur lors de la sauvegarde du créneau");
+      const msg =
+        error.response?.data?.message ||
+        (typeof error.response?.data === "string"
+          ? error.response.data
+          : null) ||
+        "Erreur lors de la sauvegarde du créneau";
+      toast.error(msg);
     }
+  };
+
+  /** Recharge la liste des prestataires pour le select (évite liste vide ou obsolète). */
+  const openNewCreneauModal = async () => {
+    setEditingCreneau(null);
+    setCreneauFormData({
+      prestataireId: "",
+      dateHeure: "",
+      disponible: true,
+    });
+    try {
+      const { data } = await api.get("/prestataires");
+      setPrestataires(data);
+    } catch {
+      toast.error("Impossible de charger les prestataires.");
+    }
+    setShowCreneauForm(true);
   };
 
   const handleEditCreneau = (creneau) => {
@@ -145,9 +236,9 @@ const AdminDashboard = () => {
       return;
     }
     try {
-      await axios.delete(`/creneaux/${id}`);
+      await api.delete(`/creneaux/${id}`);
       toast.success("Créneau supprimé avec succès");
-      fetchData();
+      fetchData({ silent: true });
     } catch (error) {
       toast.error("Erreur lors de la suppression");
     }
@@ -155,9 +246,9 @@ const AdminDashboard = () => {
 
   const handleConfirmerRendezVous = async (id) => {
     try {
-      await axios.put(`/rendez-vous/${id}/confirmer`);
+      await api.put(`/rendez-vous/${id}/confirmer`);
       toast.success("Rendez-vous confirmé");
-      fetchData();
+      fetchRendezVous(rdvPage);
     } catch (error) {
       toast.error("Erreur lors de la confirmation");
     }
@@ -249,6 +340,16 @@ const AdminDashboard = () => {
             Prestataires
           </button>
           <button
+            onClick={() => setActiveTab("catalogue")}
+            className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "catalogue"
+                ? "border-primary-500 text-primary-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Prestations & plages
+          </button>
+          <button
             onClick={() => setActiveTab("creneaux")}
             className={`py-2 px-1 border-b-2 font-medium text-sm ${
               activeTab === "creneaux"
@@ -330,6 +431,29 @@ const AdminDashboard = () => {
               </tbody>
             </table>
           </div>
+          {rdvTotalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+              <button
+                type="button"
+                disabled={rdvPage === 0}
+                onClick={() => setRdvPage((p) => Math.max(0, p - 1))}
+                className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+              >
+                ← Précédent
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {rdvPage + 1} / {rdvTotalPages}
+              </span>
+              <button
+                type="button"
+                disabled={rdvPage >= rdvTotalPages - 1}
+                onClick={() => setRdvPage((p) => p + 1)}
+                className="px-3 py-1 text-sm rounded border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+              >
+                Suivant →
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -398,6 +522,10 @@ const AdminDashboard = () => {
       )}
 
       {/* Créneaux Tab */}
+      {activeTab === "catalogue" && (
+        <AdminCatalogue prestataires={prestataires} />
+      )}
+
       {activeTab === "creneaux" && (
         <div>
           <div className="flex justify-between items-center mb-6">
@@ -405,15 +533,8 @@ const AdminDashboard = () => {
               Gestion des Créneaux Horaires
             </h2>
             <button
-              onClick={() => {
-                setEditingCreneau(null);
-                setCreneauFormData({
-                  prestataireId: "",
-                  dateHeure: "",
-                  disponible: true,
-                });
-                setShowCreneauForm(true);
-              }}
+              type="button"
+              onClick={openNewCreneauModal}
               className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
             >
               <Plus className="h-4 w-4 mr-2" />

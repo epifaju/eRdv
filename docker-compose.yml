@@ -8,9 +8,9 @@ services:
     environment:
       POSTGRES_DB: erdv_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_HOST_PORT:-5436}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -28,16 +28,19 @@ services:
       dockerfile: Dockerfile
     container_name: erdv_backend
     environment:
+      SPRING_PROFILES_ACTIVE: prod
+      APP_SEED_DEMO_USERS: "true"
+      APP_FRONTEND_BASE_URL: http://localhost:3001
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/erdv_db
       SPRING_DATASOURCE_USERNAME: postgres
-      SPRING_DATASOURCE_PASSWORD: password
-      JWT_SECRET: your-secret-key-here-make-it-very-long-and-secure-for-production
-      JWT_EXPIRATION: 86400000
-      # Configuration SMTP (à adapter selon vos besoins)
-      SPRING_MAIL_HOST: smtp.gmail.com
-      SPRING_MAIL_PORT: 587
-      SPRING_MAIL_USERNAME: your-email@gmail.com
-      SPRING_MAIL_PASSWORD: your-app-password
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-604800000}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-587}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
     ports:
       - "8084:8080"
     depends_on:
@@ -52,6 +55,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: http://localhost:8084/api
     container_name: erdv_frontend
     ports:
       - "3001:80"

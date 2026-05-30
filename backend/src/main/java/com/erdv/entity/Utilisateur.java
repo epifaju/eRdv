@@ -1,6 +1,7 @@
 package com.erdv.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.erdv.entity.RendezVous;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 
 @Entity
 @Table(name = "utilisateurs")
+@JsonIgnoreProperties({"authorities", "accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled", "username", "password"})
 public class Utilisateur implements UserDetails {
 
     @Id
@@ -50,8 +52,14 @@ public class Utilisateur implements UserDetails {
     @JsonIgnore
     private List<RendezVous> rendezVous;
 
+    /** Fiche prestataire liée (rôle PRESTATAIRE uniquement). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prestataire_id")
+    @JsonIgnore
+    private Prestataire prestataire;
+
     public enum Role {
-        USER, ADMIN
+        USER, ADMIN, PRESTATAIRE
     }
 
     // Constructeurs
@@ -122,6 +130,18 @@ public class Utilisateur implements UserDetails {
         this.rendezVous = rendezVous;
     }
 
+    public Prestataire getPrestataire() {
+        return prestataire;
+    }
+
+    public void setPrestataire(Prestataire prestataire) {
+        this.prestataire = prestataire;
+    }
+
+    public Long getPrestataireId() {
+        return prestataire != null ? prestataire.getId() : null;
+    }
+
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -129,6 +149,7 @@ public class Utilisateur implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public String getPassword() {
         return motDePasse;
     }

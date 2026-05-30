@@ -1,49 +1,42 @@
 package com.erdv.dto;
 
 import com.erdv.entity.RendezVous;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-
-import java.time.LocalDateTime;
 
 public class CreateRendezVousRequest {
 
-    @NotNull(message = "L'ID du prestataire est obligatoire")
-    private Long prestataireId;
+    @NotNull(message = "L'ID du créneau est obligatoire")
+    private Long creneauId;
 
-    @NotNull(message = "La date et heure sont obligatoires")
-    private LocalDateTime dateHeure;
+    /** Si renseigné, le libellé service est dérivé de la prestation. */
+    private Long prestationId;
 
-    @NotBlank(message = "Le service est obligatoire")
     private String service;
 
     private RendezVous.Statut statut = RendezVous.Statut.EN_ATTENTE;
 
-    // Constructeurs
     public CreateRendezVousRequest() {
     }
 
-    public CreateRendezVousRequest(Long prestataireId, LocalDateTime dateHeure, String service) {
-        this.prestataireId = prestataireId;
-        this.dateHeure = dateHeure;
+    public CreateRendezVousRequest(Long creneauId, String service) {
+        this.creneauId = creneauId;
         this.service = service;
     }
 
-    // Getters et Setters
-    public Long getPrestataireId() {
-        return prestataireId;
+    public Long getCreneauId() {
+        return creneauId;
     }
 
-    public void setPrestataireId(Long prestataireId) {
-        this.prestataireId = prestataireId;
+    public void setCreneauId(Long creneauId) {
+        this.creneauId = creneauId;
     }
 
-    public LocalDateTime getDateHeure() {
-        return dateHeure;
+    public Long getPrestationId() {
+        return prestationId;
     }
 
-    public void setDateHeure(LocalDateTime dateHeure) {
-        this.dateHeure = dateHeure;
+    public void setPrestationId(Long prestationId) {
+        this.prestationId = prestationId;
     }
 
     public String getService() {

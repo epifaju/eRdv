@@ -12,6 +12,7 @@ frontend/dist/
 .env
 .env.local
 .env.development.local
+backups/
 .env.test.local
 .env.production.local
 

@@ -14,7 +14,8 @@ public class CreneauHoraire {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    /** EAGER : le prestataire est toujours inclus dans les réponses JSON (pas de lazy hors session). */
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestataire_id", nullable = false)
     @JsonIgnoreProperties({ "creneaux", "rendezVous" })
     private Prestataire prestataire;
@@ -25,6 +26,9 @@ public class CreneauHoraire {
 
     @Column(nullable = false)
     private boolean disponible = true;
+
+    @Column(name = "duree_minutes", nullable = false)
+    private int dureeMinutes = 30;
 
     // Constructeurs
     public CreneauHoraire() {
@@ -66,5 +70,13 @@ public class CreneauHoraire {
 
     public void setDisponible(boolean disponible) {
         this.disponible = disponible;
+    }
+
+    public int getDureeMinutes() {
+        return dureeMinutes;
+    }
+
+    public void setDureeMinutes(int dureeMinutes) {
+        this.dureeMinutes = dureeMinutes;
     }
 }

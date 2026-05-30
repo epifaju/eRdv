@@ -1,14 +1,16 @@
 package com.erdv.controller;
 
 import com.erdv.dto.CreateRendezVousRequest;
+import com.erdv.dto.ReprogrammerRendezVousRequest;
+import com.erdv.dto.RendezVousResponse;
 import com.erdv.entity.RendezVous;
 import com.erdv.entity.Utilisateur;
-import com.erdv.entity.Prestataire;
 import com.erdv.service.RendezVousService;
-import com.erdv.service.UtilisateurService;
-import com.erdv.service.PrestataireService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -24,81 +26,80 @@ public class RendezVousController {
     @Autowired
     private RendezVousService rendezVousService;
 
-    @Autowired
-    private UtilisateurService utilisateurService;
-
-    @Autowired
-    private PrestataireService prestataireService;
-
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<RendezVous>> getAllRendezVous() {
-        return ResponseEntity.ok(rendezVousService.getAllRendezVous());
-    }
-
     @GetMapping("/mes-rendez-vous")
-    public ResponseEntity<List<RendezVous>> getMesRendezVous() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Utilisateur utilisateur = (Utilisateur) authentication.getPrincipal();
+    public ResponseEntity<List<RendezVousResponse>> getMesRendezVous() {
+        Utilisateur utilisateur = currentUser();
         return ResponseEntity.ok(rendezVousService.getRendezVousByUtilisateur(utilisateur.getId()));
     }
 
-    @GetMapping("/prestataire/{prestataireId}")
+    @GetMapping("/tous")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<RendezVous>> getRendezVousByPrestataire(@PathVariable Long prestataireId) {
+    public ResponseEntity<Page<RendezVousResponse>> getAllRendezVous(
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ResponseEntity.ok(rendezVousService.getAllRendezVousPaged(pageable));
+    }
+
+    @GetMapping("/mon-agenda")
+    @PreAuthorize("hasRole('PRESTATAIRE')")
+    public ResponseEntity<List<RendezVousResponse>> getMonAgenda() {
+        return ResponseEntity.ok(rendezVousService.getMonAgendaPrestataire(currentUser()));
+    }
+
+    @GetMapping("/prestataire/{prestataireId}")
+    @PreAuthorize("hasAnyRole('ADMIN','PRESTATAIRE')")
+    public ResponseEntity<List<RendezVousResponse>> getRendezVousByPrestataire(@PathVariable Long prestataireId) {
         return ResponseEntity.ok(rendezVousService.getRendezVousByPrestataire(prestataireId));
     }
 
     @GetMapping("/statut/{statut}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<RendezVous>> getRendezVousByStatut(@PathVariable RendezVous.Statut statut) {
+    public ResponseEntity<List<RendezVousResponse>> getRendezVousByStatut(@PathVariable RendezVous.Statut statut) {
         return ResponseEntity.ok(rendezVousService.getRendezVousByStatut(statut));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<RendezVous> getRendezVousById(@PathVariable Long id) {
-        return ResponseEntity.ok(rendezVousService.getRendezVousById(id));
+    public ResponseEntity<RendezVousResponse> getRendezVousById(@PathVariable Long id) {
+        return ResponseEntity.ok(rendezVousService.getRendezVousById(id, currentUser()));
     }
 
     @PostMapping
-    public ResponseEntity<RendezVous> creerRendezVous(@Valid @RequestBody CreateRendezVousRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Utilisateur utilisateur = (Utilisateur) authentication.getPrincipal();
-
-        // Récupérer le prestataire par son ID
-        Prestataire prestataire = prestataireService.getPrestataireById(request.getPrestataireId());
-
-        // Créer le rendez-vous
-        RendezVous rendezVous = new RendezVous();
-        rendezVous.setUtilisateur(utilisateur);
-        rendezVous.setPrestataire(prestataire);
-        rendezVous.setDateHeure(request.getDateHeure());
-        rendezVous.setService(request.getService());
-        rendezVous.setStatut(request.getStatut());
-
-        return ResponseEntity.ok(rendezVousService.creerRendezVous(rendezVous));
+    public ResponseEntity<RendezVousResponse> creerRendezVous(@Valid @RequestBody CreateRendezVousRequest request) {
+        return ResponseEntity.ok(rendezVousService.creerRendezVous(currentUser(), request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<RendezVous> updateRendezVous(@PathVariable Long id,
+    public ResponseEntity<RendezVousResponse> updateRendezVous(@PathVariable Long id,
             @Valid @RequestBody RendezVous rendezVous) {
-        return ResponseEntity.ok(rendezVousService.updateRendezVous(id, rendezVous));
+        return ResponseEntity.ok(rendezVousService.updateRendezVous(id, rendezVous, currentUser()));
     }
 
     @PutMapping("/{id}/confirmer")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<RendezVous> confirmerRendezVous(@PathVariable Long id) {
-        return ResponseEntity.ok(rendezVousService.confirmerRendezVous(id));
+    @PreAuthorize("hasAnyRole('ADMIN','PRESTATAIRE')")
+    public ResponseEntity<RendezVousResponse> confirmerRendezVous(@PathVariable Long id) {
+        return ResponseEntity.ok(rendezVousService.confirmerRendezVous(id, currentUser()));
     }
 
     @PutMapping("/{id}/annuler")
-    public ResponseEntity<RendezVous> annulerRendezVous(@PathVariable Long id) {
-        return ResponseEntity.ok(rendezVousService.annulerRendezVous(id));
+    public ResponseEntity<RendezVousResponse> annulerRendezVous(@PathVariable Long id) {
+        return ResponseEntity.ok(rendezVousService.annulerRendezVous(id, currentUser()));
+    }
+
+    @PutMapping("/{id}/reprogrammer")
+    public ResponseEntity<RendezVousResponse> reprogrammerRendezVous(
+            @PathVariable Long id,
+            @Valid @RequestBody ReprogrammerRendezVousRequest request) {
+        return ResponseEntity.ok(
+                rendezVousService.reprogrammerRendezVous(id, request.getCreneauId(), currentUser()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRendezVous(@PathVariable Long id) {
-        rendezVousService.deleteRendezVous(id);
+        rendezVousService.deleteRendezVous(id, currentUser());
         return ResponseEntity.ok().build();
+    }
+
+    private static Utilisateur currentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return (Utilisateur) authentication.getPrincipal();
     }
 }

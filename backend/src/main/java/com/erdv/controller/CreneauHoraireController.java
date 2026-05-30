@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -35,10 +36,19 @@ public class CreneauHoraireController {
     }
 
     @GetMapping("/prestataire/{prestataireId}/disponibles/date")
-    public ResponseEntity<List<CreneauHoraire>> getCreneauxDisponibles(
+    public ResponseEntity<List<CreneauHoraire>> getCreneauxDisponiblesForDate(
             @PathVariable Long prestataireId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateDebut) {
-        return ResponseEntity.ok(creneauHoraireService.getCreneauxDisponibles(prestataireId, dateDebut));
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime dateDebut,
+            @RequestParam(required = false) Integer dureeMinutes) {
+        if (date != null) {
+            return ResponseEntity.ok(
+                    creneauHoraireService.getCreneauxDisponiblesForDate(prestataireId, date, dureeMinutes));
+        }
+        if (dateDebut != null) {
+            return ResponseEntity.ok(creneauHoraireService.getCreneauxDisponibles(prestataireId, dateDebut));
+        }
+        return ResponseEntity.badRequest().build();
     }
 
     @GetMapping("/{id}")

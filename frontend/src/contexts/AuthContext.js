@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import axios from "axios";
 import toast from "react-hot-toast";
+import api, { setSessionExpiredHandler } from "../api/client";
 
 const AuthContext = createContext();
 
@@ -17,80 +17,82 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Configuration axios - toujours sur localhost pour accès navigateur
-  const baseURL = "http://localhost:8080/api";
-  axios.defaults.baseURL = baseURL;
-
-  // Configuration CORS pour axios
-  axios.defaults.withCredentials = false;
-  axios.defaults.headers.common["Content-Type"] = "application/json";
-  axios.defaults.headers.common["Accept"] = "application/json";
-
-  // Intercepteur pour ajouter le token aux requêtes
-  axios.interceptors.request.use(
-    (config) => {
-      const token = localStorage.getItem("token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    },
-    (error) => {
-      return Promise.reject(error);
-    }
-  );
-
-  // Intercepteur pour gérer les erreurs d'authentification et CORS
-  axios.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      console.error("Erreur axios:", error);
-
-      if (error.response?.status === 401) {
-        logout();
-        toast.error("Session expirée. Veuillez vous reconnecter.");
-      } else if (
-        error.code === "ERR_NETWORK" ||
-        error.message.includes("CORS")
-      ) {
-        toast.error(
-          "Erreur de connexion au serveur. Vérifiez que le backend est démarré."
-        );
-        console.error("Erreur CORS/Network:", error);
-      } else if (error.response?.status === 403) {
-        toast.error("Accès refusé. Vérifiez vos permissions.");
-      } else if (error.response?.status >= 500) {
-        toast.error("Erreur serveur. Veuillez réessayer plus tard.");
-      }
-      return Promise.reject(error);
-    }
-  );
-
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
+    setSessionExpiredHandler(() => {
+      setUser(null);
+      setIsAuthenticated(false);
+    });
+  }, []);
 
-    if (token && userData) {
+  /** Rôle et profil alignés sur le backend (évite ADMIN en localStorage alors que le compte est USER). */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setLoading(false);
+        return;
+      }
       try {
-        setUser(JSON.parse(userData));
+        const { data } = await api.get("/users/me");
+        if (cancelled) return;
+        const u = {
+          id: data.id,
+          nom: data.nom,
+          email: data.email,
+          role: data.role,
+          telephone: data.telephone,
+          prestataireId: data.prestataireId ?? null,
+          prestataireNom: data.prestataireNom ?? null,
+        };
+        localStorage.setItem("user", JSON.stringify(u));
+        setUser(u);
         setIsAuthenticated(true);
       } catch (error) {
-        console.error("Erreur lors du parsing des données utilisateur:", error);
-        logout();
+        if (cancelled) return;
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          localStorage.removeItem("user");
+          setUser(null);
+          setIsAuthenticated(false);
+        } else {
+          const raw = localStorage.getItem("user");
+          if (raw) {
+            try {
+              setUser(JSON.parse(raw));
+              setIsAuthenticated(true);
+            } catch {
+              localStorage.removeItem("user");
+            }
+          }
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    }
-    setLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const login = async (email, motDePasse) => {
     try {
-      const response = await axios.post("/auth/login", { email, motDePasse });
-      const { token, ...userData } = response.data;
+      const response = await api.post("/auth/login", { email, motDePasse });
+      const { token, refreshToken, ...userData } = response.data;
 
       localStorage.setItem("token", token);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
       localStorage.setItem("user", JSON.stringify(userData));
 
-      setUser(userData);
+      setUser({
+        ...userData,
+        prestataireId: userData.prestataireId ?? null,
+        prestataireNom: userData.prestataireNom ?? null,
+      });
       setIsAuthenticated(true);
 
       toast.success("Connexion réussie !");
@@ -105,10 +107,13 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await axios.post("/auth/register", userData);
-      const { token, ...user } = response.data;
+      const response = await api.post("/auth/register", userData);
+      const { token, refreshToken, ...user } = response.data;
 
       localStorage.setItem("token", token);
+      if (refreshToken) {
+        localStorage.setItem("refreshToken", refreshToken);
+      }
       localStorage.setItem("user", JSON.stringify(user));
 
       setUser(user);
@@ -124,12 +129,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = (options = {}) => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     setUser(null);
     setIsAuthenticated(false);
-    toast.success("Déconnexion réussie");
+    if (!options.silent) {
+      toast.success("Déconnexion réussie");
+    }
+  };
+
+  const refreshUser = async () => {
+    const { data } = await api.get("/users/me");
+    const u = {
+      id: data.id,
+      nom: data.nom,
+      email: data.email,
+      role: data.role,
+      telephone: data.telephone,
+      prestataireId: data.prestataireId ?? null,
+      prestataireNom: data.prestataireNom ?? null,
+    };
+    localStorage.setItem("user", JSON.stringify(u));
+    setUser(u);
   };
 
   const value = {
@@ -139,7 +162,10 @@ export const AuthProvider = ({ children }) => {
     login,
     register,
     logout,
+    refreshUser,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  );
 };

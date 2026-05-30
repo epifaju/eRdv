@@ -16,16 +16,32 @@ import PrestataireCreneaux from "./pages/PrestataireCreneaux";
 import Reservation from "./pages/Reservation";
 import MesRendezVous from "./pages/MesRendezVous";
 import AdminDashboard from "./pages/AdminDashboard";
+import PrestataireDashboard from "./pages/PrestataireDashboard";
+import Profile from "./pages/Profile";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import "./index.css";
 
-const PrivateRoute = ({ children, adminOnly = false }) => {
-  const { user, isAuthenticated } = useAuth();
+const PrivateRoute = ({ children, adminOnly = false, prestataireOnly = false }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" />;
   }
 
   if (adminOnly && user?.role !== "ADMIN") {
+    return <Navigate to="/" />;
+  }
+
+  if (prestataireOnly && user?.role !== "PRESTATAIRE") {
     return <Navigate to="/" />;
   }
 
@@ -44,6 +60,8 @@ const AppContent = () => {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/prestataires" element={<Prestataires />} />
             <Route path="/prestataires/:id" element={<PrestataireCreneaux />} />
             <Route
@@ -63,10 +81,26 @@ const AppContent = () => {
               }
             />
             <Route
+              path="/profil"
+              element={
+                <PrivateRoute>
+                  <Profile />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/admin"
               element={
                 <PrivateRoute adminOnly>
                   <AdminDashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/prestataire"
+              element={
+                <PrivateRoute prestataireOnly>
+                  <PrestataireDashboard />
                 </PrivateRoute>
               }
             />

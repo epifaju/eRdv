@@ -1,7 +1,6 @@
 package com.erdv.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -32,8 +31,9 @@ public class Prestataire {
     @Column(unique = true, nullable = false)
     private String email;
 
+    /** Non sérialisé : évite LazyInitializationException (open-in-view désactivé) et références circulaires. */
+    @JsonIgnore
     @OneToMany(mappedBy = "prestataire", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @JsonIgnoreProperties("prestataire")
     private List<CreneauHoraire> creneaux;
 
     @OneToMany(mappedBy = "prestataire", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

@@ -1,13 +1,13 @@
 package com.erdv.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "rendez_vous")
@@ -27,6 +27,11 @@ public class RendezVous {
     @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "rendezVous" })
     private Prestataire prestataire;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creneau_id", nullable = false)
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+    private CreneauHoraire creneau;
+
     @NotNull(message = "La date et heure sont obligatoires")
     @Column(nullable = false)
     private LocalDateTime dateHeure;
@@ -38,6 +43,19 @@ public class RendezVous {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Statut statut = Statut.EN_ATTENTE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prestation_id")
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "prestataire" })
+    private Prestation prestation;
+
+    @ManyToMany
+    @JoinTable(
+            name = "rendez_vous_creneaux",
+            joinColumns = @JoinColumn(name = "rendez_vous_id"),
+            inverseJoinColumns = @JoinColumn(name = "creneau_id"))
+    @JsonIgnoreProperties({ "hibernateLazyInitializer", "handler", "prestataire" })
+    private List<CreneauHoraire> creneauxReserves = new ArrayList<>();
 
     public enum Statut {
         EN_ATTENTE, CONFIRME, ANNULE
@@ -79,6 +97,14 @@ public class RendezVous {
         this.prestataire = prestataire;
     }
 
+    public CreneauHoraire getCreneau() {
+        return creneau;
+    }
+
+    public void setCreneau(CreneauHoraire creneau) {
+        this.creneau = creneau;
+    }
+
     public LocalDateTime getDateHeure() {
         return dateHeure;
     }
@@ -101,5 +127,21 @@ public class RendezVous {
 
     public void setStatut(Statut statut) {
         this.statut = statut;
+    }
+
+    public Prestation getPrestation() {
+        return prestation;
+    }
+
+    public void setPrestation(Prestation prestation) {
+        this.prestation = prestation;
+    }
+
+    public List<CreneauHoraire> getCreneauxReserves() {
+        return creneauxReserves;
+    }
+
+    public void setCreneauxReserves(List<CreneauHoraire> creneauxReserves) {
+        this.creneauxReserves = creneauxReserves != null ? creneauxReserves : new ArrayList<>();
     }
 }

@@ -12,6 +12,10 @@ RUN npm install
 # Copy source code
 COPY . .
 
+# URL publique de l'API (navigateur sur l'hôte → port mappé du backend)
+ARG REACT_APP_API_URL=http://localhost:8084/api
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 # Build the application
 RUN npm run build
 

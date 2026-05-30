@@ -1,4 +1,5 @@
-FROM openjdk:17-jdk-slim
+# openjdk:* n'est plus publié sur Docker Hub — Temurin est l'image officielle recommandée
+FROM eclipse-temurin:17-jdk AS build
 
 WORKDIR /app
 
@@ -25,7 +26,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Copy the built jar from the build stage
-COPY --from=0 /app/target/*.jar app.jar
+COPY --from=build /app/target/*.jar app.jar
 
 # Expose port
 EXPOSE 8080
