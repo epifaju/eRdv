@@ -6,6 +6,7 @@ import com.erdv.dto.PrestationRequest;
 import com.erdv.entity.Prestataire;
 import com.erdv.entity.Utilisateur;
 import com.erdv.repository.PrestataireRepository;
+import com.erdv.repository.RefreshTokenRepository;
 import com.erdv.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,9 @@ class PrestataireCatalogueSecurityTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PrestataireRepository prestataireRepository;
 
     @Autowired
@@ -46,6 +50,7 @@ class PrestataireCatalogueSecurityTest {
 
     @BeforeEach
     void seed() {
+        refreshTokenRepository.deleteAll();
         utilisateurRepository.deleteAll();
         prestataireRepository.deleteAll();
 

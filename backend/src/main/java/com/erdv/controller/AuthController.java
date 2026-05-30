@@ -10,6 +10,7 @@ import com.erdv.entity.Utilisateur;
 import com.erdv.exception.ApiException;
 import com.erdv.service.JwtService;
 import com.erdv.service.PasswordResetService;
+import com.erdv.service.RefreshTokenService;
 import com.erdv.service.UtilisateurService;
 import io.jsonwebtoken.JwtException;
 import jakarta.validation.Valid;
@@ -41,6 +42,9 @@ public class AuthController {
         @Autowired
         private PasswordResetService passwordResetService;
 
+        @Autowired
+        private RefreshTokenService refreshTokenService;
+
         @PostMapping("/register")
         public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
                 Utilisateur utilisateur = new Utilisateur();
@@ -53,7 +57,7 @@ public class AuthController {
                 Utilisateur savedUtilisateur = utilisateurService.creerUtilisateur(utilisateur);
 
                 String access = jwtService.generateAccessToken(savedUtilisateur);
-                String refresh = jwtService.generateRefreshToken(savedUtilisateur);
+                String refresh = refreshTokenService.issueRefreshToken(savedUtilisateur);
 
                 AuthResponse response = toAuthResponse(savedUtilisateur, access, refresh);
 
@@ -67,7 +71,7 @@ public class AuthController {
 
                 Utilisateur utilisateur = (Utilisateur) authentication.getPrincipal();
                 String access = jwtService.generateAccessToken(utilisateur);
-                String refresh = jwtService.generateRefreshToken(utilisateur);
+                String refresh = refreshTokenService.issueRefreshToken(utilisateur);
 
                 return ResponseEntity.ok(toAuthResponse(utilisateur, access, refresh));
         }
@@ -78,12 +82,12 @@ public class AuthController {
                         String refreshToken = request.getRefreshToken();
                         String email = jwtService.extractUsername(refreshToken);
                         UserDetails userDetails = utilisateurService.loadUserByUsername(email);
-                        if (!jwtService.validateRefreshToken(refreshToken, userDetails)) {
+                        if (!refreshTokenService.isRefreshTokenActive(refreshToken, userDetails)) {
                                 throw new ApiException(HttpStatus.UNAUTHORIZED, "Jeton de rafraîchissement invalide");
                         }
                         Utilisateur u = (Utilisateur) userDetails;
                         String access = jwtService.generateAccessToken(userDetails);
-                        String newRefresh = jwtService.generateRefreshToken(userDetails);
+                        String newRefresh = refreshTokenService.rotateRefreshToken(refreshToken, userDetails);
                         return ResponseEntity.ok(toAuthResponse(u, access, newRefresh));
                 } catch (UsernameNotFoundException e) {
                         throw new ApiException(HttpStatus.UNAUTHORIZED, "Jeton de rafraîchissement invalide ou expiré");
@@ -104,6 +108,19 @@ public class AuthController {
         @ResponseStatus(HttpStatus.NO_CONTENT)
         public void resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
                 passwordResetService.resetPassword(request.getToken(), request.getNouveauMotDePasse());
+        }
+
+        @PostMapping("/logout")
+        @ResponseStatus(HttpStatus.NO_CONTENT)
+        public void logout(@Valid @RequestBody RefreshTokenRequest request) {
+                refreshTokenService.revokeRefreshToken(request.getRefreshToken());
+        }
+
+        @PostMapping("/logout-all")
+        @ResponseStatus(HttpStatus.NO_CONTENT)
+        public void logoutAll(Authentication authentication) {
+                Utilisateur u = (Utilisateur) authentication.getPrincipal();
+                refreshTokenService.revokeAllForUser(u.getId());
         }
 
         private static AuthResponse toAuthResponse(Utilisateur u, String access, String refresh) {

@@ -129,7 +129,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = (options = {}) => {
+  const logout = async (options = {}) => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      try {
+        await api.post("/auth/logout", { refreshToken });
+      } catch {
+        // Déconnexion locale même si l'API échoue
+      }
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");

@@ -18,6 +18,7 @@ public class JwtService {
     public static final String CLAIM_TYPE = "typ";
     public static final String TYPE_ACCESS = "access";
     public static final String TYPE_REFRESH = "refresh";
+    public static final String CLAIM_JTI = "jti";
 
     @Value("${jwt.secret}")
     private String secret;
@@ -53,7 +54,7 @@ public class JwtService {
                 .getBody();
     }
 
-    private Boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -74,6 +75,31 @@ public class JwtService {
         Map<String, Object> claims = new HashMap<>();
         claims.put(CLAIM_TYPE, TYPE_REFRESH);
         return createToken(claims, userDetails.getUsername(), refreshExpiration);
+    }
+
+    public String buildRefreshToken(String username, String jti, Date expiration) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(CLAIM_TYPE, TYPE_REFRESH);
+        claims.put(CLAIM_JTI, jti);
+        return Jwts.builder()
+                .setClaims(claims)
+                .setSubject(username)
+                .setId(jti)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(expiration)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
+    }
+
+    public String extractJti(String token) {
+        return extractClaim(token, claims -> {
+            String jti = claims.get(CLAIM_JTI, String.class);
+            return jti != null ? jti : claims.getId();
+        });
+    }
+
+    public long getRefreshExpirationMillis() {
+        return refreshExpiration;
     }
 
     private String createToken(Map<String, Object> claims, String subject, long ttlMillis) {

@@ -1,9 +1,11 @@
 package com.erdv.config;
 
+import com.erdv.service.AuthRateLimitFilter;
 import com.erdv.service.JwtAuthenticationFilter;
 import com.erdv.service.JwtService;
 import com.erdv.service.UtilisateurService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -40,6 +42,9 @@ public class SecurityConfig {
     @Autowired
     private UtilisateurService utilisateurService;
 
+    @Value("${app.openapi.enabled:false}")
+    private boolean openApiEnabled;
+
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
         return new JwtAuthenticationFilter(jwtService, utilisateurService);
@@ -47,33 +52,45 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-            CorsConfigurationSource corsConfigurationSource) throws Exception {
+            CorsConfigurationSource corsConfigurationSource,
+            AuthRateLimitFilter authRateLimitFilter,
+            JwtAuthenticationFilter jwtAuthenticationFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(antMatcher(HttpMethod.OPTIONS, "/**")).permitAll()
-                        .requestMatchers(antMatcher("/actuator/health"), antMatcher("/actuator/health/**")).permitAll()
-                        .requestMatchers(antMatcher("/error")).permitAll()
-                        .requestMatchers(antMatcher("/auth/**")).permitAll()
-                        .requestMatchers(antMatcher("/prestataires")).permitAll()
-                        .requestMatchers(antMatcher("/prestataires/*")).permitAll()
-                        .requestMatchers(antMatcher("/prestataires/**")).hasRole("ADMIN")
-                        .requestMatchers(antMatcher("/prestations/prestataire/*")).permitAll()
-                        .requestMatchers(antMatcher("/prestations/**")).hasAnyRole("ADMIN", "PRESTATAIRE")
-                        .requestMatchers(antMatcher("/plages-recurrentes/**")).hasAnyRole("ADMIN", "PRESTATAIRE")
-                        .requestMatchers(antMatcher("/creneaux/prestataire/*/disponibles")).authenticated()
-                        .requestMatchers(antMatcher("/creneaux/prestataire/*/disponibles/date")).authenticated()
-                        .requestMatchers(antMatcher("/creneaux/**")).hasRole("ADMIN")
-                        .requestMatchers(antMatcher(HttpMethod.GET, "/rendez-vous/tous")).hasRole("ADMIN")
-                        .requestMatchers(antMatcher("/rendez-vous/mon-agenda")).hasRole("PRESTATAIRE")
-                        .requestMatchers(antMatcher("/rendez-vous/prestataire/*")).hasAnyRole("ADMIN", "PRESTATAIRE")
-                        .requestMatchers(antMatcher("/rendez-vous")).authenticated()
-                        .requestMatchers(antMatcher("/rendez-vous/**")).authenticated()
-                        .anyRequest().authenticated())
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(antMatcher(HttpMethod.OPTIONS, "/**")).permitAll()
+                            .requestMatchers(antMatcher("/actuator/health"), antMatcher("/actuator/health/**")).permitAll()
+                            .requestMatchers(antMatcher("/actuator/prometheus")).hasRole("ADMIN")
+                            .requestMatchers(antMatcher("/error")).permitAll()
+                            .requestMatchers(antMatcher("/auth/logout-all")).authenticated()
+                            .requestMatchers(antMatcher("/auth/**")).permitAll()
+                            .requestMatchers(antMatcher("/prestataires")).permitAll()
+                            .requestMatchers(antMatcher("/prestataires/*")).permitAll()
+                            .requestMatchers(antMatcher("/prestataires/**")).hasRole("ADMIN")
+                            .requestMatchers(antMatcher("/prestations/prestataire/*")).permitAll()
+                            .requestMatchers(antMatcher("/prestations/**")).hasAnyRole("ADMIN", "PRESTATAIRE")
+                            .requestMatchers(antMatcher("/plages-recurrentes/**")).hasAnyRole("ADMIN", "PRESTATAIRE")
+                            .requestMatchers(antMatcher("/creneaux/prestataire/*/disponibles")).authenticated()
+                            .requestMatchers(antMatcher("/creneaux/prestataire/*/disponibles/date")).authenticated()
+                            .requestMatchers(antMatcher("/creneaux/**")).hasRole("ADMIN")
+                            .requestMatchers(antMatcher(HttpMethod.GET, "/rendez-vous/tous")).hasRole("ADMIN")
+                            .requestMatchers(antMatcher("/rendez-vous/mon-agenda")).hasRole("PRESTATAIRE")
+                            .requestMatchers(antMatcher("/rendez-vous/prestataire/*")).hasAnyRole("ADMIN", "PRESTATAIRE")
+                            .requestMatchers(antMatcher("/rendez-vous")).authenticated()
+                            .requestMatchers(antMatcher("/rendez-vous/**")).authenticated();
+                    if (openApiEnabled) {
+                        auth.requestMatchers(
+                                antMatcher("/v3/api-docs/**"),
+                                antMatcher("/swagger-ui/**"),
+                                antMatcher("/swagger-ui.html")).permitAll();
+                    }
+                    auth.anyRequest().authenticated();
+                })
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(authRateLimitFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

@@ -17,9 +17,16 @@ Application multi-secteurs (cabinet, salon, garage…) : réservation en ligne, 
 | **Notifications** | E-mails HTML (client + prestataire), rappels J-1 / H-2 |
 | **Infra** | Flyway, profils dev/prod, scripts Docker & backup PostgreSQL |
 
----
+## Industrialisation (V3)
 
-## Démarrage rapide (Docker)
+| Domaine | Contenu |
+|--------|---------|
+| **CI/CD** | GitHub Actions : `mvn test` + build frontend sur push/PR |
+| **Sécurité auth** | Rate limiting login/register/forgot-password, refresh tokens révocables (`POST /auth/logout`) |
+| **Observabilité** | Métriques Prometheus (`/actuator/prometheus`, rôle ADMIN) |
+| **Documentation** | OpenAPI / Swagger UI en dev (`APP_OPENAPI_ENABLED=true`) |
+
+---
 
 ### Prérequis
 
@@ -52,6 +59,8 @@ docker compose up -d --build
 | **Frontend** | http://localhost:3001 |
 | **API backend** | http://localhost:8084/api |
 | **Santé API** | http://localhost:8084/api/actuator/health |
+| **Swagger UI** | http://localhost:8084/api/swagger-ui.html (si `APP_OPENAPI_ENABLED=true`) |
+| **Prometheus** | http://localhost:8084/api/actuator/prometheus (admin JWT requis) |
 | **PostgreSQL** | `localhost:5436` (utilisateur `postgres`, base `erdv_db`) |
 
 Le frontend Docker est compilé avec `REACT_APP_API_URL=http://localhost:8084/api`. Après modification de l’URL API, reconstruire l’image frontend.
@@ -124,6 +133,9 @@ Variables principales (voir `.env.example`) :
 | `SPRING_MAIL_*` | SMTP pour envoi réel des e-mails |
 | `APP_REMINDERS_ENABLED` | Rappels automatiques J-1 / H-2 |
 | `APP_RDV_DELAI_ANNULATION_HEURES` | Délai min. avant annulation client (défaut `24`) |
+| `APP_OPENAPI_ENABLED` | Swagger UI (`true` en dev/Docker local) |
+| `APP_AUTH_RATE_LIMIT_MAX` | Tentatives auth max. par IP / fenêtre (défaut `20`) |
+| `APP_AUTH_RATE_LIMIT_WINDOW` | Fenêtre rate limit en secondes (défaut `60`) |
 
 ### Scripts utiles
 
@@ -146,7 +158,7 @@ scripts/           Docker, backup, env
 
 ### Migrations Flyway
 
-Schéma versionné (`V1` … `V9`) : auth, reset mot de passe, prestations, plages récurrentes, lien prestataire/utilisateur, créneaux multiples, rappels e-mail.
+Schéma versionné (`V1` … `V10`) : auth, reset mot de passe, prestations, plages récurrentes, lien prestataire/utilisateur, créneaux multiples, rappels e-mail, refresh tokens révocables.
 
 ---
 
@@ -156,7 +168,7 @@ Préfixe : `/api`
 
 | Zone | Exemples |
 |------|----------|
-| Auth | `POST /auth/login`, `/auth/register`, `/auth/refresh`, `/auth/forgot-password` |
+| Auth | `POST /auth/login`, `/auth/register`, `/auth/refresh`, `/auth/logout`, `/auth/logout-all`, `/auth/forgot-password` |
 | Profil | `GET/PUT /users/me`, `PUT /users/me/password` |
 | Prestataires | `GET /prestataires` |
 | Prestations / plages | `GET /prestations/prestataire/{id}`, plages récurrentes |

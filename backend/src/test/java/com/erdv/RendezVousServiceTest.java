@@ -9,6 +9,7 @@ import com.erdv.exception.ApiException;
 import com.erdv.repository.CreneauHoraireRepository;
 import com.erdv.repository.PrestationRepository;
 import com.erdv.repository.PrestataireRepository;
+import com.erdv.repository.RefreshTokenRepository;
 import com.erdv.repository.RendezVousRepository;
 import com.erdv.repository.UtilisateurRepository;
 import com.erdv.service.RendezVousService;
@@ -36,6 +37,9 @@ class RendezVousServiceTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PrestataireRepository prestataireRepository;
 
     @Autowired
@@ -59,6 +63,7 @@ class RendezVousServiceTest {
         prestationRepository.deleteAll();
         creneauHoraireRepository.deleteAll();
         prestataireRepository.deleteAll();
+        refreshTokenRepository.deleteAll();
         utilisateurRepository.deleteAll();
 
         client = new Utilisateur();

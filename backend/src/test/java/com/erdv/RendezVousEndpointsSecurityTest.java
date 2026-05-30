@@ -3,6 +3,7 @@ package com.erdv;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.erdv.dto.AuthRequest;
 import com.erdv.entity.Utilisateur;
+import com.erdv.repository.RefreshTokenRepository;
 import com.erdv.repository.UtilisateurRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,10 +38,14 @@ class RendezVousEndpointsSecurityTest {
     private UtilisateurRepository utilisateurRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void seedUsers() {
+        refreshTokenRepository.deleteAll();
         utilisateurRepository.deleteAll();
         Utilisateur user = new Utilisateur();
         user.setNom("User");
