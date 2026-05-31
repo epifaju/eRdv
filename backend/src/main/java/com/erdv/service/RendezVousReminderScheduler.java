@@ -25,12 +25,17 @@ public class RendezVousReminderScheduler {
     @Autowired
     private EmailService emailService;
 
+    @Autowired
+    private SmsService smsService;
+
     @Scheduled(cron = "${app.reminders.cron:0 */15 * * * *}")
     @Transactional
     public void envoyerRappels() {
         LocalDateTime now = LocalDateTime.now();
         envoyerRappelsJ1(now);
         envoyerRappelsH2(now);
+        envoyerRappelsSmsJ1(now);
+        envoyerRappelsSmsH2(now);
     }
 
     private void envoyerRappelsJ1(LocalDateTime now) {
@@ -42,9 +47,9 @@ public class RendezVousReminderScheduler {
                 emailService.envoyerRappelJ1(rdv);
                 rdv.setRappelJ1Envoye(true);
                 rendezVousRepository.save(rdv);
-                log.info("Rappel J-1 envoyé pour le rendez-vous {}", rdv.getId());
+                log.info("Rappel J-1 e-mail envoyé pour le rendez-vous {}", rdv.getId());
             } catch (Exception e) {
-                log.warn("Échec rappel J-1 pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
+                log.warn("Échec rappel J-1 e-mail pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
             }
         }
     }
@@ -58,9 +63,49 @@ public class RendezVousReminderScheduler {
                 emailService.envoyerRappelH2(rdv);
                 rdv.setRappelH2Envoye(true);
                 rendezVousRepository.save(rdv);
-                log.info("Rappel H-2 envoyé pour le rendez-vous {}", rdv.getId());
+                log.info("Rappel H-2 e-mail envoyé pour le rendez-vous {}", rdv.getId());
             } catch (Exception e) {
-                log.warn("Échec rappel H-2 pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
+                log.warn("Échec rappel H-2 e-mail pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
+            }
+        }
+    }
+
+    private void envoyerRappelsSmsJ1(LocalDateTime now) {
+        if (!smsService.isConfigured()) {
+            return;
+        }
+        LocalDateTime debut = now.plusHours(23);
+        LocalDateTime fin = now.plusHours(25);
+        List<RendezVous> candidats = rendezVousRepository.findPendingJ1SmsReminders(debut, fin);
+        for (RendezVous rdv : candidats) {
+            try {
+                if (smsService.envoyerRappelJ1(rdv)) {
+                    rdv.setRappelJ1SmsEnvoye(true);
+                    rendezVousRepository.save(rdv);
+                    log.info("Rappel J-1 SMS envoyé pour le rendez-vous {}", rdv.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Échec rappel J-1 SMS pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
+            }
+        }
+    }
+
+    private void envoyerRappelsSmsH2(LocalDateTime now) {
+        if (!smsService.isConfigured()) {
+            return;
+        }
+        LocalDateTime debut = now.plusMinutes(105);
+        LocalDateTime fin = now.plusMinutes(135);
+        List<RendezVous> candidats = rendezVousRepository.findPendingH2SmsReminders(debut, fin);
+        for (RendezVous rdv : candidats) {
+            try {
+                if (smsService.envoyerRappelH2(rdv)) {
+                    rdv.setRappelH2SmsEnvoye(true);
+                    rendezVousRepository.save(rdv);
+                    log.info("Rappel H-2 SMS envoyé pour le rendez-vous {}", rdv.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Échec rappel H-2 SMS pour le rendez-vous {} : {}", rdv.getId(), e.getMessage());
             }
         }
     }

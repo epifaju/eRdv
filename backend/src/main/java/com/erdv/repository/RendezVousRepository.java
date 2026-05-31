@@ -115,4 +115,36 @@ public interface RendezVousRepository extends JpaRepository<RendezVous, Long> {
     List<RendezVous> findPendingH2Reminders(
             @Param("debut") java.time.LocalDateTime debut,
             @Param("fin") java.time.LocalDateTime fin);
+
+    @Query("""
+            SELECT DISTINCT r FROM RendezVous r
+            JOIN FETCH r.utilisateur
+            JOIN FETCH r.prestataire
+            JOIN FETCH r.creneau
+            LEFT JOIN FETCH r.prestation
+            WHERE r.statut IN ('EN_ATTENTE', 'CONFIRME')
+            AND r.rappelJ1SmsEnvoye = false
+            AND r.utilisateur.consentementSmsRappels = true
+            AND r.dateHeure >= :debut
+            AND r.dateHeure <= :fin
+            """)
+    List<RendezVous> findPendingJ1SmsReminders(
+            @Param("debut") java.time.LocalDateTime debut,
+            @Param("fin") java.time.LocalDateTime fin);
+
+    @Query("""
+            SELECT DISTINCT r FROM RendezVous r
+            JOIN FETCH r.utilisateur
+            JOIN FETCH r.prestataire
+            JOIN FETCH r.creneau
+            LEFT JOIN FETCH r.prestation
+            WHERE r.statut = 'CONFIRME'
+            AND r.rappelH2SmsEnvoye = false
+            AND r.utilisateur.consentementSmsRappels = true
+            AND r.dateHeure >= :debut
+            AND r.dateHeure <= :fin
+            """)
+    List<RendezVous> findPendingH2SmsReminders(
+            @Param("debut") java.time.LocalDateTime debut,
+            @Param("fin") java.time.LocalDateTime fin);
 }

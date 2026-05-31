@@ -34,7 +34,8 @@ Application multi-secteurs (cabinet, salon, garage…) : réservation en ligne, 
 | **API** | `GET /etablissements`, `GET /etablissements/{id}/prestataires`, CRUD admin |
 | **RGPD** | `GET /users/me/export`, `DELETE /users/me` (anonymisation + révocation sessions) |
 | **Paiement** | Stripe : intent + confirmation, RDV auto-confirmé, remboursement à l'annulation |
-| **Roadmap** | SMS (non implémenté) |
+| **SMS** | Twilio : rappels J-1 / H-2 (en plus des e-mails), désactivé par défaut |
+| **Roadmap** | — |
 
 ---
 
@@ -152,6 +153,10 @@ Variables principales (voir `.env.example`) :
 | `STRIPE_SECRET_KEY` | Clé secrète Stripe (`sk_test_…`) |
 | `STRIPE_PUBLISHABLE_KEY` | Clé publique (`pk_test_…`) |
 | `STRIPE_WEBHOOK_SECRET` | Secret webhook (`whsec_…`, optionnel en local) |
+| `APP_SMS_ENABLED` | Rappels SMS Twilio (`false` par défaut) |
+| `TWILIO_ACCOUNT_SID` | SID compte Twilio (`AC…`) |
+| `TWILIO_AUTH_TOKEN` | Token auth Twilio |
+| `TWILIO_FROM_NUMBER` | Numéro expéditeur E.164 (`+33…`) |
 | **Logs JSON** | Profil `prod` seul → JSON Logstash ; ajouter `plain-logs` pour texte (Docker local) |
 
 ### Paiement en ligne (Stripe)
@@ -171,6 +176,19 @@ stripe listen --forward-to localhost:8084/api/payments/webhook
 Copier le `whsec_…` affiché dans `STRIPE_WEBHOOK_SECRET`.
 
 Sans paiement activé, les prestations avec prix restent réservables sans encaissement (comportement actuel).
+
+### Rappels SMS (Twilio)
+
+Les rappels J-1 et H-2 sont déjà envoyés par **e-mail** si `APP_REMINDERS_ENABLED=true`. Avec Twilio, un **SMS complémentaire** part vers le téléphone du compte utilisateur (champ profil).
+
+1. Créer un compte [Twilio](https://www.twilio.com) et un numéro SMS (ou utiliser le numéro d’essai).
+2. Dans `.env` :
+   - `APP_SMS_ENABLED=true`
+   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` (format E.164, ex. `+33123456789`)
+3. Redémarrer : `docker compose up -d --build`.
+4. Vérifier que l’utilisateur a un **numéro mobile valide** dans son profil (06… normalisé en +33…) et a **activé le consentement SMS** dans Mon profil.
+
+Sans SMS activé, seuls les e-mails de rappel sont envoyés. Sans consentement explicite de l’utilisateur, aucun SMS n’est envoyé (RGPD). Un numéro absent ou invalide n’empêche pas l’e-mail et ne marque pas le SMS comme envoyé.
 
 ### Scripts utiles
 

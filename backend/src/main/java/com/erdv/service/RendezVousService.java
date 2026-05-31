@@ -325,6 +325,8 @@ public class RendezVousService {
         rendezVous.setDateHeure(newSlots.get(0).getDateHeure());
         rendezVous.setRappelJ1Envoye(false);
         rendezVous.setRappelH2Envoye(false);
+        rendezVous.setRappelJ1SmsEnvoye(false);
+        rendezVous.setRappelH2SmsEnvoye(false);
 
         RendezVous savedRendezVous;
         try {

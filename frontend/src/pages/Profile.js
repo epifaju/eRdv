@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
-import { User, Mail, Phone, Lock, Download, Trash2 } from "lucide-react";
+import { User, Mail, Phone, Lock, Download, Trash2, MessageSquare } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -25,7 +25,9 @@ const Profile = () => {
     nom: "",
     email: "",
     telephone: "",
+    consentementSmsRappels: false,
   });
+  const [consentementSmsRappelsAt, setConsentementSmsRappelsAt] = useState(null);
   const [passwordForm, setPasswordForm] = useState({
     motDePasseActuel: "",
     nouveauMotDePasse: "",
@@ -40,7 +42,9 @@ const Profile = () => {
           nom: data.nom || "",
           email: data.email || "",
           telephone: data.telephone || "",
+          consentementSmsRappels: Boolean(data.consentementSmsRappels),
         });
+        setConsentementSmsRappelsAt(data.consentementSmsRappelsAt || null);
         initialEmailRef.current = data.email || "";
       } catch (e) {
         toast.error(getApiMessage(e));
@@ -53,6 +57,10 @@ const Profile = () => {
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
+    if (form.consentementSmsRappels && !form.telephone.trim()) {
+      toast.error("Indiquez un numéro de mobile pour activer les SMS");
+      return;
+    }
     setSaving(true);
     try {
       await api.put("/users/me", form);
@@ -63,6 +71,8 @@ const Profile = () => {
         return;
       }
       await refreshUser();
+      const { data } = await api.get("/users/me");
+      setConsentementSmsRappelsAt(data.consentementSmsRappelsAt || null);
       toast.success("Profil mis à jour");
     } catch (error) {
       toast.error(getApiMessage(error));
@@ -188,6 +198,39 @@ const Profile = () => {
             onChange={(e) => setForm({ ...form, telephone: e.target.value })}
             className="mt-1 w-full border rounded-lg px-3 py-2 border-gray-300"
           />
+        </div>
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.consentementSmsRappels}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  consentementSmsRappels: e.target.checked,
+                })
+              }
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+            <span className="text-sm text-gray-700">
+              <span className="font-medium flex items-center gap-1">
+                <MessageSquare className="h-4 w-4" />
+                Recevoir des SMS de rappel de rendez-vous
+              </span>
+              <span className="block mt-1 text-gray-600">
+                J&apos;accepte de recevoir par SMS des rappels liés à mes rendez-vous
+                (J-1 et 2 h avant). Ce consentement est facultatif, révocable à tout
+                moment depuis ce profil. Les e-mails de rappel restent envoyés
+                indépendamment de ce choix.
+              </span>
+            </span>
+          </label>
+          {consentementSmsRappelsAt && form.consentementSmsRappels && (
+            <p className="text-xs text-gray-500 pl-7">
+              Consentement enregistré le{" "}
+              {new Date(consentementSmsRappelsAt).toLocaleString("fr-FR")}
+            </p>
+          )}
         </div>
         <button
           type="submit"

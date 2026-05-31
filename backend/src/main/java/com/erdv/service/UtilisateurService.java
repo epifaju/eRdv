@@ -80,7 +80,26 @@ public class UtilisateurService implements UserDetailsService {
         u.setNom(request.getNom());
         u.setEmail(request.getEmail());
         u.setTelephone(request.getTelephone());
+        if (request.getConsentementSmsRappels() != null) {
+            applySmsConsent(u, request.getConsentementSmsRappels(), request.getTelephone());
+        } else if (u.isConsentementSmsRappels()
+                && SmsService.normalizePhone(request.getTelephone()) == null) {
+            u.setConsentementSmsRappels(false);
+            u.setConsentementSmsRappelsAt(null);
+        }
         return UserProfileResponse.from(utilisateurRepository.save(u));
+    }
+
+    private void applySmsConsent(Utilisateur u, boolean consent, String telephone) {
+        if (consent && SmsService.normalizePhone(telephone) == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST,
+                    "Un numéro de mobile valide est requis pour recevoir des SMS de rappel");
+        }
+        if (consent == u.isConsentementSmsRappels()) {
+            return;
+        }
+        u.setConsentementSmsRappels(consent);
+        u.setConsentementSmsRappelsAt(consent ? Instant.now() : null);
     }
 
     @Transactional

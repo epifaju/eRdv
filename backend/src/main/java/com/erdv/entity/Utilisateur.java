@@ -61,6 +61,13 @@ public class Utilisateur implements UserDetails {
     @Column(nullable = false)
     private boolean actif = true;
 
+    /** Consentement RGPD pour recevoir des SMS de rappel de rendez-vous. */
+    @Column(name = "consentement_sms_rappels", nullable = false)
+    private boolean consentementSmsRappels = false;
+
+    @Column(name = "consentement_sms_rappels_at")
+    private java.time.Instant consentementSmsRappelsAt;
+
     public enum Role {
         USER, ADMIN, PRESTATAIRE
     }
@@ -151,6 +158,22 @@ public class Utilisateur implements UserDetails {
 
     public void setActif(boolean actif) {
         this.actif = actif;
+    }
+
+    public boolean isConsentementSmsRappels() {
+        return consentementSmsRappels;
+    }
+
+    public void setConsentementSmsRappels(boolean consentementSmsRappels) {
+        this.consentementSmsRappels = consentementSmsRappels;
+    }
+
+    public java.time.Instant getConsentementSmsRappelsAt() {
+        return consentementSmsRappelsAt;
+    }
+
+    public void setConsentementSmsRappelsAt(java.time.Instant consentementSmsRappelsAt) {
+        this.consentementSmsRappelsAt = consentementSmsRappelsAt;
     }
 
     // UserDetails implementation

@@ -17,6 +17,8 @@ public class UpdateProfileRequest {
     @NotBlank(message = "Le téléphone est obligatoire")
     private String telephone;
 
+    private Boolean consentementSmsRappels;
+
     public String getNom() {
         return nom;
     }
@@ -39,5 +41,13 @@ public class UpdateProfileRequest {
 
     public void setTelephone(String telephone) {
         this.telephone = telephone;
+    }
+
+    public Boolean getConsentementSmsRappels() {
+        return consentementSmsRappels;
+    }
+
+    public void setConsentementSmsRappels(Boolean consentementSmsRappels) {
+        this.consentementSmsRappels = consentementSmsRappels;
     }
 }

@@ -2,12 +2,16 @@ package com.erdv.dto;
 
 import com.erdv.entity.Utilisateur;
 
+import java.time.Instant;
+
 public class UserProfileResponse {
 
     private Long id;
     private String nom;
     private String email;
     private String telephone;
+    private boolean consentementSmsRappels;
+    private Instant consentementSmsRappelsAt;
     private String role;
     private Long prestataireId;
     private String prestataireNom;
@@ -18,6 +22,8 @@ public class UserProfileResponse {
         r.setNom(u.getNom());
         r.setEmail(u.getEmail());
         r.setTelephone(u.getTelephone());
+        r.setConsentementSmsRappels(u.isConsentementSmsRappels());
+        r.setConsentementSmsRappelsAt(u.getConsentementSmsRappelsAt());
         r.setRole(u.getRole().name());
         if (u.getPrestataire() != null) {
             r.setPrestataireId(u.getPrestataire().getId());
@@ -56,6 +62,22 @@ public class UserProfileResponse {
 
     public void setTelephone(String telephone) {
         this.telephone = telephone;
+    }
+
+    public boolean isConsentementSmsRappels() {
+        return consentementSmsRappels;
+    }
+
+    public void setConsentementSmsRappels(boolean consentementSmsRappels) {
+        this.consentementSmsRappels = consentementSmsRappels;
+    }
+
+    public Instant getConsentementSmsRappelsAt() {
+        return consentementSmsRappelsAt;
+    }
+
+    public void setConsentementSmsRappelsAt(Instant consentementSmsRappelsAt) {
+        this.consentementSmsRappelsAt = consentementSmsRappelsAt;
     }
 
     public String getRole() {

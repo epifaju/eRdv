@@ -68,6 +68,12 @@ public class RendezVous {
     @Column(name = "rappel_h2_envoye", nullable = false)
     private boolean rappelH2Envoye = false;
 
+    @Column(name = "rappel_j1_sms_envoye", nullable = false)
+    private boolean rappelJ1SmsEnvoye = false;
+
+    @Column(name = "rappel_h2_sms_envoye", nullable = false)
+    private boolean rappelH2SmsEnvoye = false;
+
     public enum Statut {
         EN_ATTENTE, CONFIRME, ANNULE
     }
@@ -178,5 +184,21 @@ public class RendezVous {
 
     public void setRappelH2Envoye(boolean rappelH2Envoye) {
         this.rappelH2Envoye = rappelH2Envoye;
+    }
+
+    public boolean isRappelJ1SmsEnvoye() {
+        return rappelJ1SmsEnvoye;
+    }
+
+    public void setRappelJ1SmsEnvoye(boolean rappelJ1SmsEnvoye) {
+        this.rappelJ1SmsEnvoye = rappelJ1SmsEnvoye;
+    }
+
+    public boolean isRappelH2SmsEnvoye() {
+        return rappelH2SmsEnvoye;
+    }
+
+    public void setRappelH2SmsEnvoye(boolean rappelH2SmsEnvoye) {
+        this.rappelH2SmsEnvoye = rappelH2SmsEnvoye;
     }
 }
